@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // When proxied through nginx, use basePath
-  basePath: process.env.PROXIED === 'true' ? '/page-builder' : '',
+  // No basePath needed - nginx strips the /page-builder prefix
+  // basePath: process.env.PROXIED === 'true' ? '/page-builder' : '',
   
   // Allow images from the gateway domain in production
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'komunate.com', '104.248.51.150.nip.io'],
   },
   
   // Ensure trailing slashes are consistent

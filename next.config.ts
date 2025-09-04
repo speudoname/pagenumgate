@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // No basePath needed - nginx strips the /page-builder prefix
-  // basePath: process.env.PROXIED === 'true' ? '/page-builder' : '',
+  // Use basePath in production to serve assets correctly
+  basePath: process.env.NODE_ENV === 'production' ? '/page-builder' : '',
+  
+  // Tell Next.js where assets are served from
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/page-builder' : '',
   
   // Allow images from the gateway domain in production
   images: {

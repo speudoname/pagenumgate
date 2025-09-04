@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyToken } from '@/lib/auth/jwt'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user info from headers (set by middleware)
-    const tenantId = request.headers.get('x-tenant-id')
-    const userId = request.headers.get('x-user-id')
-    const email = request.headers.get('x-user-email')
-    const role = request.headers.get('x-user-role')
+    // Check for token from either header (from nginx) or cookie
+    const headerToken = request.headers.get('x-auth-token')
+    const cookieToken = request.cookies.get('pb-auth-token')?.value
+    const token = headerToken || cookieToken
 
-    if (!tenantId || !userId || !email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!token) {
+      return NextResponse.json({ error: 'No authentication token' }, { status: 401 })
+    }
+
+    // Verify the token
+    const payload = await verifyToken(token)
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
     return NextResponse.json({
-      tenant_id: tenantId,
-      user_id: userId,
-      email,
-      role: role || 'user'
+      tenant_id: payload.tenant_id,
+      user_id: payload.user_id,
+      email: payload.email,
+      role: payload.role
     })
   } catch (error) {
     console.error('Get user error:', error)

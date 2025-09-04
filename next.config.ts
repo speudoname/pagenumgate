@@ -1,10 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Use basePath in production to serve assets correctly
-  basePath: process.env.NODE_ENV === 'production' ? '/page-builder' : '',
-  
-  // Tell Next.js where assets are served from
+  // No basePath - nginx strips the prefix for routing
+  // Only use assetPrefix to serve static assets from correct path
   assetPrefix: process.env.NODE_ENV === 'production' ? '/page-builder' : '',
   
   // Allow images from the gateway domain in production
@@ -17,6 +15,11 @@ const nextConfig: NextConfig = {
   
   // Disable strict mode for development to avoid double renders
   reactStrictMode: false,
+  
+  // Public runtime config for client-side path handling
+  publicRuntimeConfig: {
+    basePath: process.env.NODE_ENV === 'production' ? '/page-builder' : '',
+  },
 };
 
 export default nextConfig;

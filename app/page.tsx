@@ -17,10 +17,9 @@ export default function PageBuilderDashboard() {
   useEffect(() => {
     async function loadUser() {
       try {
-        // Get token from cookie on client side
-        // When proxied, we're served under /page-builder
-        const isProxied = window.location.pathname.startsWith('/page-builder')
-        const apiPath = isProxied ? '/page-builder/api/auth/me' : '/api/auth/me'
+        // Check if we're in production (served through nginx proxy)
+        const isProduction = window.location.hostname !== 'localhost'
+        const apiPath = isProduction ? '/page-builder/api/auth/me' : '/api/auth/me'
         const response = await fetch(apiPath)
         if (response.ok) {
           const userData = await response.json()

@@ -13,6 +13,8 @@ interface FileNode {
   size?: number
   uploadedAt?: string
   children?: FileNode[]
+  isPublished?: boolean
+  publicUrl?: string
 }
 
 interface FileBrowserProps {
@@ -31,6 +33,7 @@ export default function FileBrowser({ onFileSelect, selectedFile }: FileBrowserP
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('name')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
+  const [publishedFiles, setPublishedFiles] = useState<Map<string, { isPublished: boolean; publicUrl?: string }>>(new Map())
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -61,12 +64,56 @@ export default function FileBrowser({ onFileSelect, selectedFile }: FileBrowserP
       
       const data = await response.json()
       setFiles(data.files)
+      
+      // Check publish status for all HTML files
+      if (data.files) {
+        await checkPublishStatusForAllFiles(data.files)
+      }
+      
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load files')
     } finally {
       setLoading(false)
     }
+  }
+
+  const checkPublishStatusForAllFiles = async (rootNode: FileNode) => {
+    const htmlFiles: string[] = []
+    
+    const collectHtmlFiles = (node: FileNode) => {
+      if (node.type === 'file' && node.name.endsWith('.html')) {
+        htmlFiles.push(node.path)
+      }
+      if (node.children) {
+        node.children.forEach(collectHtmlFiles)
+      }
+    }
+    
+    collectHtmlFiles(rootNode)
+    
+    // Check publish status for each HTML file
+    const newPublishedFiles = new Map<string, { isPublished: boolean; publicUrl?: string }>()
+    
+    await Promise.all(
+      htmlFiles.map(async (filePath) => {
+        try {
+          const response = await fetch(getApiUrl(`/api/files/publish?path=${encodeURIComponent(filePath)}`))
+          if (response.ok) {
+            const data = await response.json()
+            newPublishedFiles.set(filePath, {
+              isPublished: data.isPublished,
+              publicUrl: data.publicUrl
+            })
+          }
+        } catch (error) {
+          console.error('Failed to check publish status for', filePath, error)
+          newPublishedFiles.set(filePath, { isPublished: false })
+        }
+      })
+    )
+    
+    setPublishedFiles(newPublishedFiles)
   }
 
   const handleContextMenu = (e: React.MouseEvent, node?: FileNode, isRoot?: boolean) => {
@@ -148,23 +195,71 @@ console.log('Hello from ${fileName}!');`
 
   const handleNewFolder = async (parentPath: string, folderName: string) => {
     try {
-      // Create a placeholder file in the folder (Vercel Blob requires files, not empty folders)
+      // Create an index.html file in the folder (Vercel Blob requires files, not empty folders)
       const fullPath = parentPath 
-        ? `${parentPath}/${folderName}/.gitkeep` 
-        : `${folderName}/.gitkeep`
+        ? `${parentPath}/${folderName}/index.html` 
+        : `${folderName}/index.html`
+      
+      // Create a basic HTML template for the folder's index page
+      const content = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${folderName}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .folder-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .path {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>${folderName}</h1>
+    <div class="folder-info">
+        <p>Welcome to the ${folderName} folder.</p>
+        <p>This is the default index page. You can edit this file or add more content to this folder.</p>
+        <p class="path">Path: ${parentPath ? `${parentPath}/${folderName}` : folderName}/</p>
+    </div>
+</body>
+</html>`
       
       const response = await fetch(getApiUrl('/api/files/save'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           path: fullPath,
-          content: '',
-          contentType: 'text/plain'
+          content,
+          contentType: 'text/html'
         })
       })
       
       if (response.ok) {
         await loadFiles()
+        // Auto-expand the parent folder to show the new folder
+        if (parentPath) {
+          setExpandedFolders(prev => new Set([...prev, parentPath]))
+        }
       }
     } catch (error) {
       console.error('Failed to create folder:', error)
@@ -190,6 +285,132 @@ console.log('Hello from ${fileName}!');`
       }
     } catch (error) {
       console.error('Failed to delete:', error)
+    }
+  }
+
+  const handleRename = async (node: FileNode, newName: string) => {
+    try {
+      const response = await fetch(getApiUrl('/api/files/rename'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          oldPath: node.path,
+          newName,
+          type: node.type
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        await loadFiles()
+        
+        // If the renamed file was selected, update selection with new path
+        if (selectedFile?.path === node.path) {
+          onFileSelect({
+            ...selectedFile,
+            name: newName,
+            path: data.newPath
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to rename:', error)
+    }
+  }
+
+  const handleDuplicate = async (node: FileNode) => {
+    try {
+      const response = await fetch(getApiUrl('/api/files/duplicate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: node.path,
+          type: node.type
+        })
+      })
+      
+      if (response.ok) {
+        await loadFiles()
+      }
+    } catch (error) {
+      console.error('Failed to duplicate:', error)
+    }
+  }
+
+  const handlePublish = async (node: FileNode) => {
+    try {
+      const response = await fetch(getApiUrl('/api/files/publish'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: node.path,
+          action: 'publish'
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        // Update the published files state
+        const newPublishedFiles = new Map(publishedFiles)
+        newPublishedFiles.set(node.path, {
+          isPublished: true,
+          publicUrl: data.publicUrl
+        })
+        setPublishedFiles(newPublishedFiles)
+        
+        // Update the selected file if it's the same file
+        if (selectedFile?.path === node.path) {
+          onFileSelect({
+            ...selectedFile,
+            isPublished: true,
+            publicUrl: data.publicUrl
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to publish:', error)
+    }
+  }
+
+  const handleUnpublish = async (node: FileNode) => {
+    try {
+      const response = await fetch(getApiUrl('/api/files/publish'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: node.path,
+          action: 'unpublish'
+        })
+      })
+      
+      if (response.ok) {
+        // Update the published files state
+        const newPublishedFiles = new Map(publishedFiles)
+        newPublishedFiles.set(node.path, {
+          isPublished: false
+        })
+        setPublishedFiles(newPublishedFiles)
+        
+        // Update the selected file if it's the same file
+        if (selectedFile?.path === node.path) {
+          onFileSelect({
+            ...selectedFile,
+            isPublished: false,
+            publicUrl: undefined
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to unpublish:', error)
+    }
+  }
+
+  const copyPublicUrl = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      // You could add a toast notification here
+    } catch (error) {
+      console.error('Failed to copy URL:', error)
     }
   }
 
@@ -247,6 +468,8 @@ console.log('Hello from ${fileName}!');`
     const isFolder = node.type === 'folder'
     const isExpanded = expandedFolders.has(node.path)
     const isSelected = selectedFile?.path === node.path
+    const publishInfo = publishedFiles.get(node.path)
+    const isPublished = publishInfo?.isPublished || false
 
     return (
       <div key={node.path || node.name}>
@@ -261,7 +484,13 @@ console.log('Hello from ${fileName}!');`
             if (isFolder) {
               toggleFolder(node.path)
             } else {
-              onFileSelect(node)
+              // Add publish status to the selected file
+              const enrichedNode = {
+                ...node,
+                isPublished,
+                publicUrl: publishInfo?.publicUrl
+              }
+              onFileSelect(enrichedNode)
             }
           }}
           onContextMenu={(e) => handleContextMenu(e, node)}
@@ -281,6 +510,13 @@ console.log('Hello from ${fileName}!');`
           <span className={`flex-1 text-sm ${isSelected ? 'font-semibold' : ''}`}>
             {node.name}
           </span>
+          
+          {/* Published indicator */}
+          {!isFolder && node.name.endsWith('.html') && isPublished && (
+            <span className="text-green-600" title="Published">
+              🌐
+            </span>
+          )}
           
           {/* File size */}
           {!isFolder && node.size && (
@@ -393,9 +629,14 @@ console.log('Hello from ${fileName}!');`
           onNewFolder={() => setModal({ type: 'newFolder', node: contextMenu.node })}
           onRename={contextMenu.node ? () => setModal({ type: 'rename', node: contextMenu.node }) : undefined}
           onDelete={contextMenu.node ? () => setModal({ type: 'delete', node: contextMenu.node }) : undefined}
-          onDuplicate={contextMenu.node?.type === 'file' ? () => console.log('Duplicate not implemented yet') : undefined}
+          onDuplicate={contextMenu.node ? () => handleDuplicate(contextMenu.node!) : undefined}
+          onPublish={contextMenu.node?.type === 'file' && contextMenu.node.name.endsWith('.html') ? () => handlePublish(contextMenu.node!) : undefined}
+          onUnpublish={contextMenu.node?.type === 'file' && contextMenu.node.name.endsWith('.html') ? () => handleUnpublish(contextMenu.node!) : undefined}
+          onCopyUrl={contextMenu.node && publishedFiles.get(contextMenu.node.path)?.publicUrl ? () => copyPublicUrl(publishedFiles.get(contextMenu.node!.path)!.publicUrl!) : undefined}
           isRoot={contextMenu.isRoot}
           itemType={contextMenu.node?.type}
+          isPublished={contextMenu.node ? publishedFiles.get(contextMenu.node.path)?.isPublished || false : false}
+          fileName={contextMenu.node?.name}
         />
       )}
 
@@ -465,6 +706,22 @@ console.log('Hello from ${fileName}!');`
           message={`Are you sure you want to delete "${modal.node.name}"?${
             modal.node.type === 'folder' ? ' This will delete all files inside the folder.' : ''
           }`}
+        />
+      )}
+
+      {modal.type === 'rename' && modal.node && (
+        <FileModal
+          isOpen={true}
+          onClose={() => setModal({ type: null })}
+          onConfirm={(newName) => {
+            handleRename(modal.node!, newName!)
+            setModal({ type: null })
+          }}
+          title={`Rename ${modal.node.type === 'folder' ? 'Folder' : 'File'}`}
+          type="input"
+          inputLabel="New name"
+          inputPlaceholder={modal.node.name}
+          initialValue={modal.node.name.replace(/\.[^/.]+$/, '')} // Remove extension for files
         />
       )}
     </>

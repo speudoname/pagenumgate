@@ -17,6 +17,8 @@ interface FileNode {
   type: 'file' | 'folder'
   path: string
   url?: string
+  isPublished?: boolean
+  publicUrl?: string
 }
 
 export default function PageBuilderDashboard() {

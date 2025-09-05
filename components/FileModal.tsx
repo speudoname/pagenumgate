@@ -12,6 +12,7 @@ interface FileModalProps {
   inputLabel?: string
   inputPlaceholder?: string
   defaultValue?: string
+  initialValue?: string
   options?: { label: string; value: string; icon?: string }[]
 }
 
@@ -25,9 +26,10 @@ export default function FileModal({
   inputLabel,
   inputPlaceholder,
   defaultValue = '',
+  initialValue,
   options = []
 }: FileModalProps) {
-  const [inputValue, setInputValue] = useState(defaultValue)
+  const [inputValue, setInputValue] = useState(initialValue || defaultValue)
   const [selectedOption, setSelectedOption] = useState(options[0]?.value || '')
 
   if (!isOpen) return null

@@ -11,8 +11,13 @@ interface FileContextMenuProps {
   onRename?: () => void
   onDelete?: () => void
   onDuplicate?: () => void
+  onPublish?: () => void
+  onUnpublish?: () => void
+  onCopyUrl?: () => void
   isRoot?: boolean
   itemType?: 'file' | 'folder'
+  isPublished?: boolean
+  fileName?: string
 }
 
 export default function FileContextMenu({
@@ -24,8 +29,13 @@ export default function FileContextMenu({
   onRename,
   onDelete,
   onDuplicate,
+  onPublish,
+  onUnpublish,
+  onCopyUrl,
   isRoot = false,
-  itemType
+  itemType,
+  isPublished = false,
+  fileName
 }: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -108,6 +118,52 @@ export default function FileContextMenu({
           <span>📋</span>
           <span>Duplicate</span>
         </button>
+      )}
+
+      {/* Publishing options - only for HTML files */}
+      {!isRoot && fileName?.endsWith('.html') && (
+        <>
+          <div className="border-t border-gray-200 my-1" />
+          
+          {!isPublished && onPublish && (
+            <button
+              onClick={() => {
+                onPublish()
+                onClose()
+              }}
+              className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-700 flex items-center gap-2 text-sm"
+            >
+              <span>🌐</span>
+              <span>Publish</span>
+            </button>
+          )}
+
+          {isPublished && onUnpublish && (
+            <button
+              onClick={() => {
+                onUnpublish()
+                onClose()
+              }}
+              className="w-full px-3 py-2 text-left hover:bg-orange-50 text-orange-700 flex items-center gap-2 text-sm"
+            >
+              <span>🌐</span>
+              <span>Unpublish</span>
+            </button>
+          )}
+
+          {isPublished && onCopyUrl && (
+            <button
+              onClick={() => {
+                onCopyUrl()
+                onClose()
+              }}
+              className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center gap-2 text-sm"
+            >
+              <span>📋</span>
+              <span>Copy Public URL</span>
+            </button>
+          )}
+        </>
       )}
 
       {!isRoot && onDelete && (

@@ -8,6 +8,8 @@ interface FileNode {
   type: 'file' | 'folder'
   path: string
   url?: string
+  isPublished?: boolean
+  publicUrl?: string
 }
 
 interface FileEditorProps {
@@ -126,9 +128,24 @@ export default function FileEditor({ file }: FileEditorProps) {
               Modified
             </span>
           )}
+          {file.isPublished && (
+            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded flex items-center gap-1">
+              🌐 Published
+            </span>
+          )}
         </div>
         
         <div className="flex items-center gap-2">
+          {file.isPublished && file.publicUrl && (
+            <button
+              onClick={() => navigator.clipboard.writeText(file.publicUrl!)}
+              className="px-3 py-1.5 text-sm border border-green-300 text-green-700 hover:bg-green-50 rounded flex items-center gap-1"
+              title="Copy Public URL"
+            >
+              📋 Copy URL
+            </button>
+          )}
+          
           <button
             onClick={() => setPreview(!preview)}
             className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
@@ -150,6 +167,49 @@ export default function FileEditor({ file }: FileEditorProps) {
           </button>
         </div>
       </div>
+
+      {/* File Properties - shown for HTML files */}
+      {file.name.endsWith('.html') && (
+        <div className="bg-gray-50 border-b px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-gray-900">File Properties</h3>
+              <div className="mt-1 text-xs text-gray-600">
+                <div>Path: <code className="bg-gray-100 px-1 py-0.5 rounded">{file.path}</code></div>
+                {file.isPublished ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-green-600">🌐 Published</span>
+                    {file.publicUrl && (
+                      <>
+                        <span>•</span>
+                        <a 
+                          href={file.publicUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline"
+                        >
+                          View Live
+                        </a>
+                        <span>•</span>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(file.publicUrl!)}
+                          className="text-blue-600 hover:text-blue-800 underline"
+                        >
+                          Copy URL
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-1 text-gray-500">
+                    📄 Not published (right-click file to publish)
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error message */}
       {error && (

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { put, del } from '@vercel/blob'
+import { logger } from '@/lib/utils/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,9 +46,9 @@ export async function POST(request: NextRequest) {
       size: content.length
     })
   } catch (error) {
-    console.error('Save file error:', error)
+    logger.error('Save file error:', error)
     return NextResponse.json(
-      { error: 'Failed to save file', details: error },
+      { error: 'Failed to save file' },
       { status: 500 }
     )
   }

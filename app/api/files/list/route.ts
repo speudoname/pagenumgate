@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { list } from '@vercel/blob'
 import { verifyToken } from '@/lib/auth/jwt'
+import { logger } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -76,9 +77,9 @@ export async function GET(request: NextRequest) {
       totalFiles: blobs.length
     })
   } catch (error) {
-    console.error('List files error:', error)
+    logger.error('List files error:', error)
     return NextResponse.json(
-      { error: 'Failed to list files', details: error },
+      { error: 'Failed to list files' },
       { status: 500 }
     )
   }

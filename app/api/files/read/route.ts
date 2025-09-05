@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +30,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Fetch the file content from blob URL
+    // SECURITY: Validate URL is from Vercel Blob storage only
+    const allowedDomains = [
+      'public.blob.vercel-storage.com',
+      'blob.vercel-storage.com'
+    ]
+    
+    try {
+      const urlObj = new URL(url)
+      if (!allowedDomains.some(domain => urlObj.hostname.endsWith(domain))) {
+        return NextResponse.json(
+          { error: 'Invalid file source' },
+          { status: 403 }
+        )
+      }
+    } catch (e) {
+      return NextResponse.json(
+        { error: 'Invalid URL format' },
+        { status: 400 }
+      )
+    }
+    
+    // Fetch the file content from validated blob URL
     const response = await fetch(url)
     
     if (!response.ok) {
@@ -46,9 +68,9 @@ export async function POST(request: NextRequest) {
       url
     })
   } catch (error) {
-    console.error('Read file error:', error)
+    logger.error('Read file error:', error)
     return NextResponse.json(
-      { error: 'Failed to read file', details: error },
+      { error: 'Failed to read file' },
       { status: 500 }
     )
   }

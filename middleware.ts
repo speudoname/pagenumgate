@@ -1,20 +1,22 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifyToken, setTokenCookie } from '@/lib/auth/jwt'
+import { logger } from '@/lib/utils/logger'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Explicitly skip API routes - critical fix for proxy routing
-  if (pathname.startsWith('/api/')) {
-    console.log('Skipping middleware for API route:', pathname)
-    return NextResponse.next()
-  }
+  // API routes need authentication too, but handle some differently
+  // Only skip specific public endpoints if needed in future
+  const isApiRoute = pathname.startsWith('/api/')
+  
+  // For now, all API routes require authentication
+  // We'll handle the token validation for API routes too
 
   // Check if request is coming from gateway proxy (has x-auth-token header)
   const headerToken = request.headers.get('x-auth-token')
   if (headerToken) {
-    console.log('Request from gateway proxy with token')
+    logger.log('Request from gateway proxy with token')
     // Set the token as cookie for the Page Builder app to use
     const response = NextResponse.next()
     response.cookies.set('pb-auth-token', headerToken, {
@@ -32,7 +34,7 @@ export async function middleware(request: NextRequest) {
   const fromGateway = request.nextUrl.searchParams.get('from') === 'gateway'
   
   if (urlToken && fromGateway) {
-    console.log('Received token from gateway, storing in cookie')
+    logger.log('Received token from gateway, storing in cookie')
     // Store token in cookie and redirect to clean URL
     const response = NextResponse.redirect(new URL('/', request.url))
     response.cookies.set('pb-auth-token', urlToken, {
@@ -48,9 +50,19 @@ export async function middleware(request: NextRequest) {
   // Get token from cookie
   const token = request.cookies.get('pb-auth-token')?.value
 
-  // No token, redirect to gateway
+  // No token - handle differently for API routes vs pages
   if (!token) {
-    console.log('No token found, redirecting to gateway')
+    logger.log('No token found')
+    
+    // For API routes, return 401 JSON error
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+    
+    // For pages, redirect to gateway
     const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001'
     return NextResponse.redirect(`${gatewayUrl}/login`)
   }
@@ -59,15 +71,24 @@ export async function middleware(request: NextRequest) {
   const payload = await verifyToken(token)
   
   if (!payload) {
-    console.log('Invalid token, redirecting to gateway')
-    // Invalid token, redirect to gateway
+    logger.log('Invalid token')
+    
+    // For API routes, return 401 JSON error
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: 'Invalid authentication token' },
+        { status: 401 }
+      )
+    }
+    
+    // For pages, redirect to gateway
     const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001'
     const response = NextResponse.redirect(`${gatewayUrl}/login`)
     response.cookies.delete('pb-auth-token')
     return response
   }
 
-  console.log('Token valid for tenant:', payload.tenant_id)
+  logger.log('Token valid for tenant:', payload.tenant_id)
   
   // Add tenant info to headers for API routes
   const requestHeaders = new Headers(request.headers)
@@ -87,12 +108,13 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes should handle their own auth)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files
+     * 
+     * API routes ARE included for authentication
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.svg|public).*)',
   ],
 }

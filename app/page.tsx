@@ -33,7 +33,7 @@ export default function PageBuilderDashboard() {
           setUser(userData)
         }
       } catch (error) {
-        console.error('Failed to load user:', error)
+        // Silent fail - user will see auth failed message
       } finally {
         setLoading(false)
       }

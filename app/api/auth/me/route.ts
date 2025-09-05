@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth/jwt'
+import { logger } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
       role: payload.role || 'user'
     })
   } catch (error) {
-    console.error('Get user error:', error)
+    logger.error('Get user error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

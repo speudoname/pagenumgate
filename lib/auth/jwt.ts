@@ -1,5 +1,6 @@
 import { jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import { logger } from '@/lib/utils/logger'
 
 const JWT_SECRET = process.env.JWT_SECRET!
 
@@ -19,7 +20,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     const { payload } = await jwtVerify(token, secret)
     return payload as unknown as JWTPayload
   } catch (error) {
-    console.error('Token verification error:', error)
+    logger.error('Token verification error:', error)
     return null
   }
 }

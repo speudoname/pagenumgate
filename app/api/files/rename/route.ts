@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { list, copy, del } from '@vercel/blob'
-import { supabaseAdmin } from '@/lib/supabase/server'
 import { logger } from '@/lib/utils/logger'
 
 export async function POST(request: NextRequest) {
@@ -68,39 +67,6 @@ export async function POST(request: NextRequest) {
         await del(blob.url)
       }
 
-      // Update published files if any
-      const oldPublicPath = fullOldPath.replace(`${tenantId}/`, '')
-      const newPublicPath = fullNewPath.replace(`${tenantId}/`, '')
-      
-      // Get all published files in this folder
-      const { data: publishedFiles } = await supabaseAdmin
-        .from('published_files')
-        .select('id, file_path, blob_url')
-        .eq('tenant_id', tenantId)
-        .like('file_path', `${oldPublicPath}%`)
-      
-      // Update each file's path
-      if (publishedFiles && publishedFiles.length > 0) {
-        for (const file of publishedFiles) {
-          const relativePath = file.file_path.substring(oldPublicPath.length)
-          const updatedPath = newPublicPath + relativePath
-          
-          // Also need to update blob URL for the new location
-          const { blobs } = await list({
-            prefix: `${tenantId}/${updatedPath}`,
-            limit: 1
-          })
-          
-          await supabaseAdmin
-            .from('published_files')
-            .update({ 
-              file_path: updatedPath,
-              blob_url: blobs[0]?.url || file.blob_url
-            })
-            .eq('id', file.id)
-        }
-      }
-
     } else {
       // For single file rename
       const { blobs } = await list({
@@ -118,27 +84,10 @@ export async function POST(request: NextRequest) {
       const oldBlob = blobs[0]
       
       // Copy to new location
-      const newBlob = await copy(oldBlob.url, fullNewPath, { access: 'public' })
+      await copy(oldBlob.url, fullNewPath, { access: 'public' })
       
       // Delete old file
       await del(oldBlob.url)
-
-      // Update published file if exists
-      const oldPublicPath = fullOldPath.replace(`${tenantId}/`, '')
-      const newPublicPath = fullNewPath.replace(`${tenantId}/`, '')
-      
-      const { error: updateError } = await supabaseAdmin
-        .from('published_files')
-        .update({ 
-          file_path: newPublicPath,
-          blob_url: newBlob.url
-        })
-        .eq('tenant_id', tenantId)
-        .eq('file_path', oldPublicPath)
-
-      if (updateError) {
-        logger.error('Failed to update published file path:', updateError)
-      }
     }
 
     return NextResponse.json({

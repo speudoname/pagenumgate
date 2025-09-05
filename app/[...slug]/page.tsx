@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
-import { supabaseAdmin } from '@/lib/supabase/server'
-import { headers } from 'next/headers'
+import { list } from '@vercel/blob'
 
 interface PageProps {
   params: Promise<{
@@ -15,46 +14,47 @@ export default async function PublishedPage({ params }: PageProps) {
   // Build the file path from slug segments
   const filePath = slug.join('/')
   
-  // Get the host to extract tenant info
-  const headersList = await headers()
-  const host = headersList.get('host') || ''
-  
-  // Extract tenant from subdomain or use default
-  let tenantSlug = 'default'
-  if (host.includes('.')) {
-    const subdomain = host.split('.')[0]
-    if (subdomain && subdomain !== 'www') {
-      tenantSlug = subdomain
-    }
+  // IMPORTANT: Block any path containing "unpublished"
+  if (filePath.includes('unpublished/') || filePath.includes('/unpublished')) {
+    return notFound()
   }
   
   try {
-    // Look up tenant by slug
-    const { data: tenant } = await supabaseAdmin
-      .from('tenants')
-      .select('id')
-      .eq('slug', tenantSlug)
-      .single()
+    // For now, use a default tenant ID (should come from auth context in production)
+    // In production, this would come from middleware/auth
+    const tenantId = process.env.DEFAULT_TENANT_ID || 'default'
     
-    if (!tenant) {
-      return notFound()
-    }
+    // Look for the file in blob storage
+    const { blobs } = await list({
+      prefix: `${tenantId}/${filePath}`,
+      limit: 1
+    })
     
-    // Check if this file is published
-    const { data: publishedFile } = await supabaseAdmin
-      .from('published_files')
-      .select('blob_url')
-      .eq('tenant_id', tenant.id)
-      .eq('file_path', filePath)
-      .eq('is_published', true)
-      .single()
-    
-    if (!publishedFile) {
-      return notFound()
+    if (blobs.length === 0) {
+      // Try with .html extension if not provided
+      const { blobs: htmlBlobs } = await list({
+        prefix: `${tenantId}/${filePath}.html`,
+        limit: 1
+      })
+      
+      if (htmlBlobs.length === 0) {
+        return notFound()
+      }
+      
+      // Fetch the HTML content
+      const response = await fetch(htmlBlobs[0].url)
+      if (!response.ok) {
+        return notFound()
+      }
+      
+      const content = await response.text()
+      return (
+        <div dangerouslySetInnerHTML={{ __html: content }} />
+      )
     }
     
     // Fetch the content from blob storage
-    const response = await fetch(publishedFile.blob_url)
+    const response = await fetch(blobs[0].url)
     if (!response.ok) {
       return notFound()
     }
@@ -66,7 +66,7 @@ export default async function PublishedPage({ params }: PageProps) {
       <div dangerouslySetInnerHTML={{ __html: content }} />
     )
   } catch (error) {
-    console.error('Error serving published page:', error)
+    console.error('Error serving page:', error)
     return notFound()
   }
 }

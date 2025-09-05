@@ -33,21 +33,16 @@ export default async function PublishedPage({ params }: PageProps) {
       const payload = await verifyToken(token)
       if (payload) {
         tenantId = payload.tenant_id
-        console.log('Authenticated access - Tenant ID:', tenantId)
       } else {
         // Invalid token, use default tenant for public access
         tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || ''
       }
     } else {
       // No token, this is public access - use default tenant
-      // TEMPORARY: You need to add NEXT_PUBLIC_DEFAULT_TENANT_ID to your .env.local
-      // Copy the tenant ID from the console log above when you're logged in
       tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || ''
-      console.log('Public access - Using default tenant:', tenantId || 'NOT SET')
     }
     
     if (!tenantId) {
-      console.error('No tenant ID available for published pages')
       return notFound()
     }
     

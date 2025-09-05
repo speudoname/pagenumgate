@@ -74,7 +74,6 @@ export default function FileBrowser({ onFileSelect, selectedFile }: FileBrowserP
 
   const handleContextMenu = (e: React.MouseEvent, node?: FileNode, isRoot?: boolean) => {
     e.preventDefault()
-    console.log('Context menu opened:', { node: node?.name, isRoot, hasNode: !!node })
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -445,7 +444,7 @@ console.log('Hello from ${fileName}!');`
               onFileSelect(node)
             }
           }}
-          onContextMenu={(e) => handleContextMenu(e, node)}
+          onContextMenu={(e) => handleContextMenu(e, node, false)}
         >
           {/* Icon */}
           <span className={`${isUnpublishedFolder ? 'text-orange-600' : 'text-gray-600'}`}>

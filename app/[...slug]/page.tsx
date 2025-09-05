@@ -22,20 +22,34 @@ export default async function PublishedPage({ params }: PageProps) {
   }
   
   try {
-    // Get tenant ID from auth token
+    // Try to get tenant ID from auth token first (for authenticated users)
     const cookieStore = await cookies()
     const token = cookieStore.get('pb-auth-token')?.value
     
-    if (!token) {
-      return notFound()
+    let tenantId: string
+    
+    if (token) {
+      // User is authenticated, use their tenant ID
+      const payload = await verifyToken(token)
+      if (payload) {
+        tenantId = payload.tenant_id
+        console.log('Authenticated access - Tenant ID:', tenantId)
+      } else {
+        // Invalid token, use default tenant for public access
+        tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || ''
+      }
+    } else {
+      // No token, this is public access - use default tenant
+      // TEMPORARY: You need to add NEXT_PUBLIC_DEFAULT_TENANT_ID to your .env.local
+      // Copy the tenant ID from the console log above when you're logged in
+      tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || ''
+      console.log('Public access - Using default tenant:', tenantId || 'NOT SET')
     }
     
-    const payload = await verifyToken(token)
-    if (!payload) {
+    if (!tenantId) {
+      console.error('No tenant ID available for published pages')
       return notFound()
     }
-    
-    const tenantId = payload.tenant_id
     
     // Look for the file in blob storage
     const { blobs } = await list({

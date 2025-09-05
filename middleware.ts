@@ -6,12 +6,20 @@ import { logger } from '@/lib/utils/logger'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // API routes need authentication too, but handle some differently
-  // Only skip specific public endpoints if needed in future
-  const isApiRoute = pathname.startsWith('/api/')
+  // Skip authentication for published pages (catch-all route handles its own access control)
+  // The catch-all route will block unpublished content itself
+  const isPublishedPage = !pathname.startsWith('/api/') && 
+                          !pathname.startsWith('/_next/') && 
+                          pathname !== '/' &&
+                          pathname !== '/favicon.ico'
   
-  // For now, all API routes require authentication
-  // We'll handle the token validation for API routes too
+  if (isPublishedPage) {
+    // Let the catch-all route handle access control for published/unpublished content
+    return NextResponse.next()
+  }
+
+  // API routes need authentication
+  const isApiRoute = pathname.startsWith('/api/')
 
   // Check if request is coming from gateway proxy (has x-auth-token header)
   const headerToken = request.headers.get('x-auth-token')

@@ -36,6 +36,16 @@ export default function FileContextMenu({
   filePath
 }: FileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  
+  // Debug to see what's being passed
+  console.log('Context menu rendering:', {
+    isRoot,
+    hasRename: !!onRename,
+    hasDuplicate: !!onDuplicate,
+    itemType,
+    showRenameCondition: !isRoot && !!onRename,
+    showDuplicateCondition: !isRoot && !!onDuplicate
+  })
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

@@ -74,6 +74,7 @@ export default function FileBrowser({ onFileSelect, selectedFile }: FileBrowserP
 
   const handleContextMenu = (e: React.MouseEvent, node?: FileNode, isRoot?: boolean) => {
     e.preventDefault()
+    console.log('Context menu opened:', { node: node?.name, isRoot, hasNode: !!node })
     setContextMenu({
       x: e.clientX,
       y: e.clientY,

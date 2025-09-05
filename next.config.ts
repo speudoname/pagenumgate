@@ -10,15 +10,25 @@ const nextConfig: NextConfig = {
     domains: ['localhost', 'komunate.com', '104.248.51.150.nip.io'],
   },
   
-  // Ensure trailing slashes are consistent
-  trailingSlash: false,
-  
   // Disable strict mode for development to avoid double renders
   reactStrictMode: false,
   
   // Public runtime config for client-side path handling
   publicRuntimeConfig: {
     basePath: process.env.NODE_ENV === 'production' ? '/page-builder' : '',
+  },
+  
+  // Disable trailing slash enforcement for API routes
+  skipTrailingSlashRedirect: true,
+  
+  // Custom rewrites to handle API routes correctly
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/api/:path*',
+      },
+    ];
   },
 };
 

@@ -1,0 +1,188 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+
+interface FileNode {
+  name: string
+  type: 'file' | 'folder'
+  path: string
+  url?: string
+}
+
+interface FileEditorProps {
+  file: FileNode | null
+}
+
+export default function FileEditor({ file }: FileEditorProps) {
+  const [content, setContent] = useState<string>('')
+  const [originalContent, setOriginalContent] = useState<string>('')
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState(false)
+
+  useEffect(() => {
+    if (file && file.type === 'file') {
+      loadFileContent()
+    } else {
+      setContent('')
+      setOriginalContent('')
+    }
+  }, [file])
+
+  const loadFileContent = async () => {
+    if (!file || !file.url) return
+    
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const response = await fetch('/api/files/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          url: file.url,
+          path: file.path 
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to load file content')
+      }
+      
+      const data = await response.json()
+      setContent(data.content)
+      setOriginalContent(data.content)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load file')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const saveFile = async () => {
+    if (!file) return
+    
+    try {
+      setSaving(true)
+      setError(null)
+      
+      const response = await fetch('/api/files/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: file.path,
+          content,
+          contentType: file.name.endsWith('.css') ? 'text/css' : 
+                       file.name.endsWith('.js') ? 'application/javascript' : 
+                       'text/html'
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save file')
+      }
+      
+      setOriginalContent(content)
+      alert('File saved successfully!')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save file')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const hasChanges = content !== originalContent
+
+  if (!file) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-500">
+        <div className="text-center">
+          <div className="text-4xl mb-2">📝</div>
+          <div>Select a file to view or edit</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-500">
+        Loading file content...
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {/* Header */}
+      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">Editing:</span>
+          <span className="font-semibold">{file.name}</span>
+          {hasChanges && (
+            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+              Modified
+            </span>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPreview(!preview)}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+          >
+            {preview ? 'Edit' : 'Preview'}
+          </button>
+          
+          <button
+            onClick={saveFile}
+            disabled={!hasChanges || saving}
+            className={`
+              px-4 py-1.5 text-sm rounded font-medium
+              ${hasChanges 
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
+            `}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
+      {/* Editor/Preview */}
+      <div className="flex-1 overflow-hidden">
+        {preview ? (
+          <div className="h-full overflow-auto p-4 bg-white">
+            {file.name.endsWith('.html') ? (
+              <iframe
+                srcDoc={content}
+                className="w-full h-full border-0"
+                title="Preview"
+              />
+            ) : (
+              <pre className="whitespace-pre-wrap font-mono text-sm">
+                {content}
+              </pre>
+            )}
+          </div>
+        ) : (
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none"
+            placeholder="Start editing..."
+            spellCheck={false}
+          />
+        )}
+      </div>
+    </div>
+  )
+}

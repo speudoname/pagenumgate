@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { verifyToken } from '@/lib/auth/jwt'
+import FileBrowser from '@/components/FileBrowser'
+import FileEditor from '@/components/FileEditor'
 
 interface UserInfo {
   tenant_id: string
@@ -10,14 +11,21 @@ interface UserInfo {
   role: string
 }
 
+interface FileNode {
+  name: string
+  type: 'file' | 'folder'
+  path: string
+  url?: string
+}
+
 export default function PageBuilderDashboard() {
   const [user, setUser] = useState<UserInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedFile, setSelectedFile] = useState<FileNode | null>(null)
 
   useEffect(() => {
     async function loadUser() {
       try {
-        // With basePath, API routes are automatically prefixed
         const response = await fetch('/api/auth/me')
         if (response.ok) {
           const userData = await response.json()
@@ -33,7 +41,6 @@ export default function PageBuilderDashboard() {
   }, [])
 
   const handleBackToGateway = () => {
-    // Navigate back to gateway dashboard
     window.location.href = '/dashboard'
   }
 
@@ -62,17 +69,20 @@ export default function PageBuilderDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b-2 border-black">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-2xl font-bold">Page Builder</h1>
-              <p className="text-sm text-gray-600">NumGate Platform</p>
+              <p className="text-sm text-gray-600">File System Manager</p>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">{user.email}</span>
+              <div className="text-right">
+                <div className="text-sm text-gray-600">{user.email}</div>
+                <div className="text-xs text-gray-500">Tenant: {user.tenant_id.slice(0, 8)}...</div>
+              </div>
               <button
                 onClick={handleBackToGateway}
                 className="px-4 py-2 border-2 border-black text-sm font-medium rounded-md bg-white hover:bg-gray-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
@@ -84,61 +94,35 @@ export default function PageBuilderDashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Success Message */}
-        <div className="bg-green-50 border-2 border-green-400 rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-bold text-green-900 mb-2">
-            ✅ Cross-App Authentication Successful!
-          </h2>
-          <p className="text-green-800">
-            You have successfully navigated from the Gateway to the Page Builder app.
-          </p>
-          <div className="mt-4 p-4 bg-white rounded border border-green-300">
-            <p className="text-sm font-mono">
-              <strong>Tenant ID:</strong> {user.tenant_id}<br/>
-              <strong>User ID:</strong> {user.user_id}<br/>
-              <strong>Email:</strong> {user.email}<br/>
-              <strong>Role:</strong> {user.role}
-            </p>
+      {/* Main Content - File System */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - File Browser */}
+        <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
+          <div className="border-b border-gray-200 px-4 py-3">
+            <h2 className="font-semibold text-gray-900">Files</h2>
+            <p className="text-xs text-gray-500 mt-1">Your tenant workspace</p>
           </div>
+          <FileBrowser 
+            onFileSelect={setSelectedFile}
+            selectedFile={selectedFile}
+          />
         </div>
 
-        {/* Page Builder Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white p-6 rounded-lg border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-            <div className="text-2xl mb-2">📄</div>
-            <h3 className="text-lg font-bold mb-1">Pages</h3>
-            <p className="text-gray-600 text-sm mb-4">Create and manage landing pages</p>
-            <button className="text-sm text-blue-600 font-medium">Coming Soon →</button>
-          </div>
+        {/* Right Side - File Editor */}
+        <FileEditor file={selectedFile} />
+      </div>
 
-          <div className="bg-white p-6 rounded-lg border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-            <div className="text-2xl mb-2">🎨</div>
-            <h3 className="text-lg font-bold mb-1">Templates</h3>
-            <p className="text-gray-600 text-sm mb-4">Choose from pre-built templates</p>
-            <button className="text-sm text-blue-600 font-medium">Coming Soon →</button>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-            <div className="text-2xl mb-2">🚀</div>
-            <h3 className="text-lg font-bold mb-1">Deploy</h3>
-            <p className="text-gray-600 text-sm mb-4">Publish to custom domains</p>
-            <button className="text-sm text-blue-600 font-medium">Coming Soon →</button>
-          </div>
+      {/* Status Bar */}
+      <div className="bg-gray-800 text-white text-xs px-4 py-2 flex justify-between">
+        <div className="flex items-center gap-4">
+          <span>🟢 Connected to NUM Gate</span>
+          <span>|</span>
+          <span>Blob Storage: Active</span>
         </div>
-
-        {/* Technical Details */}
-        <div className="bg-gray-100 rounded-lg p-6">
-          <h3 className="font-bold mb-2">🔐 Authentication Details</h3>
-          <ul className="text-sm space-y-1 text-gray-700">
-            <li>• JWT token successfully transferred from Gateway</li>
-            <li>• Token validated using shared JWT secret</li>
-            <li>• Tenant context preserved across apps</li>
-            <li>• Ready for multi-tenant operations</li>
-          </ul>
+        <div>
+          {selectedFile ? `Editing: ${selectedFile.path}` : 'No file selected'}
         </div>
-      </main>
+      </div>
     </div>
   )
 }

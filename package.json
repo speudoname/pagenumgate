@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
+    "@vercel/blob": "^1.1.1",
     "clsx": "^2.1.1",
     "cookies-next": "^6.1.0",
     "jose": "^6.1.0",

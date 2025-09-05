@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       success: true,
       path: fullPath,
       url: blob.url,
-      size: blob.size
+      size: content.length
     })
   } catch (error) {
     console.error('Save file error:', error)

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
           size: blob.size,
           uploadedAt: blob.uploadedAt,
           contentType: details.contentType,
-          contentLength: details.contentLength
+          contentLength: details.size
         }
       })
     )

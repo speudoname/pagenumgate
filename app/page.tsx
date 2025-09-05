@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import FileBrowser from '@/components/FileBrowser'
 import FileEditor from '@/components/FileEditor'
+import { getApiUrl } from '@/lib/utils/api'
 
 interface UserInfo {
   tenant_id: string
@@ -26,7 +27,7 @@ export default function PageBuilderDashboard() {
   useEffect(() => {
     async function loadUser() {
       try {
-        const response = await fetch('/api/auth/me')
+        const response = await fetch(getApiUrl('/api/auth/me'))
         if (response.ok) {
           const userData = await response.json()
           setUser(userData)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getApiUrl } from '@/lib/utils/api'
 
 interface FileNode {
   name: string
@@ -30,7 +31,7 @@ export default function FileBrowser({ onFileSelect, selectedFile }: FileBrowserP
   const loadFiles = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/files/list')
+      const response = await fetch(getApiUrl('/api/files/list'))
       
       if (!response.ok) {
         throw new Error('Failed to load files')

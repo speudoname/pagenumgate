@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getApiUrl } from '@/lib/utils/api'
 
 interface FileNode {
   name: string
@@ -37,7 +38,7 @@ export default function FileEditor({ file }: FileEditorProps) {
       setLoading(true)
       setError(null)
       
-      const response = await fetch('/api/files/read', {
+      const response = await fetch(getApiUrl('/api/files/read'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -67,7 +68,7 @@ export default function FileEditor({ file }: FileEditorProps) {
       setSaving(true)
       setError(null)
       
-      const response = await fetch('/api/files/save', {
+      const response = await fetch(getApiUrl('/api/files/save'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

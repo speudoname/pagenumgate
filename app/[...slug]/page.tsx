@@ -1,7 +1,60 @@
 import { notFound } from 'next/navigation'
 import { list } from '@vercel/blob'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { verifyToken } from '@/lib/auth/jwt'
+import { createClient } from '@supabase/supabase-js'
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+)
+
+// Helper function to get tenant from domain/subdomain
+async function getTenantFromHost(host: string): Promise<string> {
+  if (!host) return ''
+  
+  // Remove port if present (for localhost:3002)
+  host = host.split(':')[0]
+  
+  // Check if it's a platform subdomain (e.g., tenant.numgate.com or tenant.localhost)
+  const platformDomains = ['numgate.com', 'localhost', 'vercel.app']
+  const isPlatformDomain = platformDomains.some(domain => host.includes(domain))
+  
+  if (isPlatformDomain) {
+    // Extract subdomain
+    const parts = host.split('.')
+    if (parts.length > 1) {
+      const subdomain = parts[0]
+      
+      // Skip www or app subdomains
+      if (subdomain === 'www' || subdomain === 'app') {
+        return ''
+      }
+      
+      // Look up tenant by slug
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('slug', subdomain)
+        .single()
+      
+      return tenant?.id || ''
+    }
+  } else {
+    // It's a custom domain - look it up
+    const { data: customDomain } = await supabase
+      .from('custom_domains')
+      .select('tenant_id')
+      .eq('domain', host)
+      .eq('verified', true)
+      .single()
+    
+    return customDomain?.tenant_id || ''
+  }
+  
+  return ''
+}
 
 interface PageProps {
   params: Promise<{
@@ -22,27 +75,32 @@ export default async function PublishedPage({ params }: PageProps) {
   }
   
   try {
-    // Try to get tenant ID from auth token first (for authenticated users)
+    let tenantId: string
+    
+    // Try to get tenant ID from auth token first (for authenticated preview)
     const cookieStore = await cookies()
     const token = cookieStore.get('pb-auth-token')?.value
     
-    let tenantId: string
-    
     if (token) {
-      // User is authenticated, use their tenant ID
+      // User is authenticated, use their tenant ID for preview
       const payload = await verifyToken(token)
       if (payload) {
         tenantId = payload.tenant_id
       } else {
-        // Invalid token, use default tenant for public access
-        tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || ''
+        // Invalid token, fall back to domain-based lookup
+        const headersList = await headers()
+        const host = headersList.get('host') || ''
+        tenantId = await getTenantFromHost(host)
       }
     } else {
-      // No token, this is public access - use default tenant
-      tenantId = process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || ''
+      // Public access - identify tenant from domain
+      const headersList = await headers()
+      const host = headersList.get('host') || ''
+      tenantId = await getTenantFromHost(host)
     }
     
     if (!tenantId) {
+      console.error('Could not identify tenant from domain')
       return notFound()
     }
     

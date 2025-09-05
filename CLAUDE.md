@@ -8,6 +8,72 @@
 - **Never modify** JWT authentication flow - it must match the gateway
 - **Tenant isolation is mandatory** - each tenant only sees their own data
 - **Use shared Supabase instance** - same database as NUM Gate
+
+## 🚨 CRITICAL: Multi-Tenant Architecture - NEVER FORGET THIS!
+
+### How Multi-Tenancy Works for Published Pages
+
+**EVERY TENANT HAS:**
+1. **Their own subdomain**: `tenant-slug.domain.com` (e.g., `acme.numgate.com`)
+2. **Optional custom domain**: `theircustomdomain.com` (if verified in database)
+3. **Their own blob storage folder**: All files stored under `tenant-id/...`
+4. **Complete isolation**: No shared resources between tenants
+
+### Published Pages Access Pattern
+
+When someone visits a published page:
+- `tenant-a.numgate.com/products/index.html` → Serves Tenant A's file from their blob folder
+- `tenant-b.numgate.com/products/index.html` → Serves Tenant B's file from their blob folder  
+- `customdomain.com/about.html` → Serves that specific tenant's file
+
+**THE DOMAIN IDENTIFIES THE TENANT - NOT A HARDCODED ID!**
+
+### How to Identify Tenant for Public Pages
+
+```typescript
+// 1. Extract host from request
+const host = request.headers.get('host') // e.g., "acme.numgate.com" or "customdomain.com"
+
+// 2. Extract subdomain if it's a platform domain
+if (host.includes('.numgate.com')) {
+  const subdomain = host.split('.')[0] // "acme"
+  // Look up tenant by slug
+  const tenant = await supabase
+    .from('tenants')
+    .select('id')
+    .eq('slug', subdomain)
+    .single()
+} else {
+  // It's a custom domain
+  const tenant = await supabase
+    .from('custom_domains')
+    .select('tenant_id')
+    .eq('domain', host)
+    .eq('verified', true)
+    .single()
+}
+
+// 3. Use that tenant's ID to fetch files
+const tenantId = tenant.id
+```
+
+### NEVER DO THIS:
+- ❌ Don't hardcode a "default" tenant ID in env files
+- ❌ Don't serve one tenant's files for all domains
+- ❌ Don't assume single-tenant architecture
+- ❌ Don't use NEXT_PUBLIC_DEFAULT_TENANT_ID or similar
+
+### File Storage Structure
+```
+blob-storage/
+├── tenant-id-1/
+│   ├── index.html
+│   ├── products/
+│   │   └── index.html
+├── tenant-id-2/
+│   ├── index.html
+│   └── about.html
+```
 - **Proxy routing** - Served at `/page-builder` path via nginx/Vercel
 
 ### Shared Resources

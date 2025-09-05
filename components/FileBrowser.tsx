@@ -74,11 +74,12 @@ export default function FileBrowser({ onFileSelect, selectedFile }: FileBrowserP
 
   const handleContextMenu = (e: React.MouseEvent, node?: FileNode, isRoot?: boolean) => {
     e.preventDefault()
+    const finalIsRoot = isRoot !== undefined ? isRoot : !node
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
       node,
-      isRoot
+      isRoot: finalIsRoot
     })
   }
 
@@ -444,7 +445,10 @@ console.log('Hello from ${fileName}!');`
               onFileSelect(node)
             }
           }}
-          onContextMenu={(e) => handleContextMenu(e, node, false)}
+          onContextMenu={(e) => {
+            e.stopPropagation() // Prevent event bubbling
+            handleContextMenu(e, node, false)
+          }}
         >
           {/* Icon */}
           <span className={`${isUnpublishedFolder ? 'text-orange-600' : 'text-gray-600'}`}>
@@ -565,24 +569,27 @@ console.log('Hello from ${fileName}!');`
       </div>
 
       {/* Context Menu */}
-      {contextMenu && (
-        <FileContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={() => setContextMenu(null)}
-          onNewFile={() => setModal({ type: 'fileType', node: contextMenu.node })}
-          onNewFolder={() => setModal({ type: 'newFolder', node: contextMenu.node })}
-          onRename={contextMenu.node ? () => setModal({ type: 'rename', node: contextMenu.node }) : undefined}
-          onDelete={contextMenu.node ? () => setModal({ type: 'delete', node: contextMenu.node }) : undefined}
-          onDuplicate={contextMenu.node ? () => handleDuplicate(contextMenu.node!) : undefined}
-          onPublish={contextMenu.node?.path.includes('/unpublished/') ? () => handlePublish(contextMenu.node!) : undefined}
-          onUnpublish={contextMenu.node && !contextMenu.node.path.includes('/unpublished/') ? () => handleUnpublish(contextMenu.node!) : undefined}
-          isRoot={contextMenu.isRoot}
-          itemType={contextMenu.node?.type}
-          fileName={contextMenu.node?.name}
-          filePath={contextMenu.node?.path}
-        />
-      )}
+      {contextMenu && (() => {
+        const shouldShowItemOptions = contextMenu.node && !contextMenu.isRoot
+        return (
+          <FileContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            onNewFile={() => setModal({ type: 'fileType', node: contextMenu.node })}
+            onNewFolder={() => setModal({ type: 'newFolder', node: contextMenu.node })}
+            onRename={shouldShowItemOptions ? () => setModal({ type: 'rename', node: contextMenu.node }) : undefined}
+            onDelete={shouldShowItemOptions ? () => setModal({ type: 'delete', node: contextMenu.node }) : undefined}
+            onDuplicate={shouldShowItemOptions ? () => handleDuplicate(contextMenu.node!) : undefined}
+            onPublish={contextMenu.node?.path.includes('/unpublished/') ? () => handlePublish(contextMenu.node!) : undefined}
+            onUnpublish={contextMenu.node && !contextMenu.node.path.includes('/unpublished/') ? () => handleUnpublish(contextMenu.node!) : undefined}
+            isRoot={contextMenu.isRoot || false}
+            itemType={contextMenu.node?.type}
+            fileName={contextMenu.node?.name}
+            filePath={contextMenu.node?.path}
+          />
+        )
+      })()}
 
       {/* Modals */}
       {modal.type === 'fileType' && (

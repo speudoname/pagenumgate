@@ -227,7 +227,7 @@ export default function FileEditor({ file }: FileEditorProps) {
                 srcDoc={content}
                 className="w-full h-full border-0"
                 title="Preview"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts allow-forms allow-modals allow-popups allow-presentation"
               />
             ) : (
               <pre className="whitespace-pre-wrap font-mono text-sm">

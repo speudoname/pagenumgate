@@ -35,8 +35,12 @@ export async function POST(request: NextRequest) {
 
     // If it's a folder, we need to delete all contents first
     if (type === 'folder') {
+      // Ensure we only delete files in THIS folder, not folders with similar names
+      // Add a trailing slash to ensure exact folder match
+      const folderPrefix = fullPath.endsWith('/') ? fullPath : `${fullPath}/`
+      
       const { blobs } = await list({
-        prefix: fullPath
+        prefix: folderPrefix
       })
       
       // Delete all files in the folder

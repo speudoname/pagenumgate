@@ -81,7 +81,9 @@ export default function PageBuilderDashboard() {
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <div className="text-sm text-gray-600">{user.email}</div>
-                <div className="text-xs text-gray-500">Tenant: {user.tenant_id.slice(0, 8)}...</div>
+                {user.tenant_id && (
+                  <div className="text-xs text-gray-500">Tenant: {user.tenant_id.slice(0, 8)}...</div>
+                )}
               </div>
               <button
                 onClick={handleBackToGateway}

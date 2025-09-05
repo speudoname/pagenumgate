@@ -1,5 +1,7 @@
 import { notFound } from 'next/navigation'
 import { list } from '@vercel/blob'
+import { cookies } from 'next/headers'
+import { verifyToken } from '@/lib/auth/jwt'
 
 interface PageProps {
   params: Promise<{
@@ -20,9 +22,20 @@ export default async function PublishedPage({ params }: PageProps) {
   }
   
   try {
-    // For now, use a default tenant ID (should come from auth context in production)
-    // In production, this would come from middleware/auth
-    const tenantId = process.env.DEFAULT_TENANT_ID || 'default'
+    // Get tenant ID from auth token
+    const cookieStore = await cookies()
+    const token = cookieStore.get('pb-auth-token')?.value
+    
+    if (!token) {
+      return notFound()
+    }
+    
+    const payload = await verifyToken(token)
+    if (!payload) {
+      return notFound()
+    }
+    
+    const tenantId = payload.tenant_id
     
     // Look for the file in blob storage
     const { blobs } = await list({

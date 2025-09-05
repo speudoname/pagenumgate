@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // No basePath - nginx will handle the path stripping
+  // Use basePath for routing when served from subpath
+  basePath: process.env.NODE_ENV === 'production' ? '/page-builder' : '',
   
   // Allow images from the gateway domain in production
   images: {

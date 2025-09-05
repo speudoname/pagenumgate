@@ -5,6 +5,12 @@ import { verifyToken, setTokenCookie } from '@/lib/auth/jwt'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Explicitly skip API routes - critical fix for proxy routing
+  if (pathname.startsWith('/api/')) {
+    console.log('Skipping middleware for API route:', pathname)
+    return NextResponse.next()
+  }
+
   // Check if request is coming from gateway proxy (has x-auth-token header)
   const headerToken = request.headers.get('x-auth-token')
   if (headerToken) {

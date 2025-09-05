@@ -17,10 +17,8 @@ export default function PageBuilderDashboard() {
   useEffect(() => {
     async function loadUser() {
       try {
-        // Check if we're in production (served through nginx proxy)
-        const isProduction = window.location.hostname !== 'localhost'
-        const apiPath = isProduction ? '/page-builder/api/auth/me' : '/api/auth/me'
-        const response = await fetch(apiPath)
+        // With basePath, API routes are automatically prefixed
+        const response = await fetch('/api/auth/me')
         if (response.ok) {
           const userData = await response.json()
           setUser(userData)

@@ -229,9 +229,9 @@ export default function FileEditor({ file, onOpenAIChat }: FileEditorProps) {
       )}
 
       {/* Editor/Preview */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {preview ? (
-          <div className="h-full overflow-auto p-4 bg-white">
+          <div className="h-full overflow-auto bg-white">
             {file.name.endsWith('.html') ? (
               <iframe
                 srcDoc={content}
@@ -240,7 +240,7 @@ export default function FileEditor({ file, onOpenAIChat }: FileEditorProps) {
                 sandbox="allow-scripts allow-forms allow-modals allow-popups allow-presentation"
               />
             ) : (
-              <pre className="whitespace-pre-wrap font-mono text-sm">
+              <pre className="h-full overflow-auto p-4 whitespace-pre-wrap font-mono text-sm">
                 {content}
               </pre>
             )}
@@ -249,7 +249,7 @@ export default function FileEditor({ file, onOpenAIChat }: FileEditorProps) {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none"
+            className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none bg-white"
             placeholder="Start editing..."
             spellCheck={false}
           />

@@ -138,7 +138,7 @@ export default function PageBuilderDashboard() {
         </div>
 
         {/* Middle - File Editor */}
-        <div className="flex-1">
+        <div className="flex-1 min-h-0 flex flex-col">
           <FileEditor 
             file={selectedFile} 
             onOpenAIChat={openAIChat}

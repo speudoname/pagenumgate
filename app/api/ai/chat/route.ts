@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { verifyToken } from '@/lib/auth/jwt'
 import { logger } from '@/lib/utils/logger'
 import { getTools, executeToolCall } from '@/lib/ai/tools'
+import { list } from '@vercel/blob'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -117,61 +118,86 @@ export async function POST(request: NextRequest) {
         content: message,
       })
 
-    // Prepare lightweight system prompt
+    // Get folder contents if folder is selected
+    let folderContents = ''
+    if (contextType === 'folder' && contextPath) {
+      try {
+        const { blobs } = await list({
+          prefix: `${tenantId}${contextPath.startsWith('/') ? contextPath : '/' + contextPath}`,
+          limit: 100
+        })
+        if (blobs && blobs.length > 0) {
+          const files = blobs.map(b => {
+            const path = b.pathname.replace(`${tenantId}/`, '')
+            return `- ${path}`
+          }).join('\n')
+          folderContents = `\n\n## 📂 Files in this folder:\n${files}\n`
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+
+    // Prepare comprehensive system prompt with full context
     const systemPrompt = `You are an intelligent AI assistant for page building and file management.
 
 ## 🔴 CRITICAL: Your Current Context
 ${contextType === 'folder' ? `
-📁 FOLDER SELECTED: "${contextPath}"
+📁 **FOLDER SELECTED**: "${contextPath}"
 **THIS IS YOUR PRIMARY WORKING DIRECTORY**
-- ANY file operation defaults to THIS folder
-- "create file" → creates in ${contextPath}/
-- "delete all" → operates in ${contextPath}/
-- ALWAYS use this folder unless user specifies different path
+- When user says "create a file" → create it in ${contextPath}/
+- When user says "delete all" → operate in ${contextPath}/
+- When user says "list files" → list from ${contextPath}/
+- ALWAYS default to THIS folder for ALL operations
+- Only use a different path if user explicitly specifies one${folderContents}
 ` : contextType === 'file' ? `
-📄 FILE SELECTED: "${contextPath}"
+📄 **FILE SELECTED**: "${contextPath}"
 **THIS IS YOUR PRIMARY WORKING FILE**
-- "edit this" or "update" → modifies THIS file
-- "add content" → adds to THIS file
-- Always read THIS file before editing
+- When user says "edit this", "update", "change" → modify THIS file: ${contextPath}
+- When user says "add content" → add to THIS file: ${contextPath}
+- When user says "fix", "improve" → work on THIS file: ${contextPath}
+- ALWAYS read THIS file first before editing to see current content
+- For edit_file tool, you must provide the COMPLETE new content, not just changes
 ` : `
-🌐 ROOT LEVEL - No specific selection
-- Look at the file browser to see what folder/file user is viewing
-- Default to root operations
+🌐 **ROOT LEVEL** - No specific file/folder selected
+- User is at the root directory
+- Create files/folders at root level unless specified
+- List files from root
 `}
 
-## Your Task Execution Process
-1. **ANALYZE**: What does the user want?
-2. **CONTEXT**: Apply to selected folder/file FIRST
-3. **PLAN**: Break down into specific tool calls
-4. **EXECUTE**: Run ALL necessary tools in sequence
-5. **VERIFY**: Ensure you completed everything
+## Understanding User Intent
+- "this file" or "it" = ${contextPath || 'no file selected'}
+- "this folder" or "here" = ${contextPath || 'root'}
+- "create a homepage" = create in current folder
+- "edit the title" = edit the currently selected file
+- "delete everything except X" = operate in current folder
 
-## MANDATORY Execution Rules
-- **NEVER stop after just listing** - continue with the action
-- **ALWAYS complete multi-step tasks** - if you list files to delete, then DELETE them
-- **DEFAULT to selected context** - use ${contextPath || '/'} unless told otherwise
-- **Chain tools properly** - read→edit, list→delete, etc.
+## Your Task Execution Rules
+1. **CONTEXT FIRST**: Always consider the selected file/folder
+2. **READ BEFORE EDIT**: When editing files, ALWAYS read first to see current content
+3. **COMPLETE OPERATIONS**: Never stop after listing - complete the requested action
+4. **USE FULL PATHS**: Include the context path in your operations
+5. **EDIT PROPERLY**: For edit_file, provide the COMPLETE updated content
 
-## Your 25 Tools (use as many as needed)
+## Important for File Editing
+When user asks to edit/change/update a file:
+1. First use read_file to get current content
+2. Make the requested changes to that content
+3. Use edit_file with the COMPLETE modified content
+4. Never use edit_file without reading first
+
+## Your 25 Tools
 - File Ops: create_file, edit_file, delete_file, read_file, list_files, create_folder, move_file
 - DOM: update_section, get_preview_state, find_element, update_element, add_element, remove_element, inspect_element
 - Page: add_section, apply_theme, update_layout, optimize_seo, add_component
 - Business: add_webinar_registration, add_payment_form, add_lms_course_card, add_testimonial_section, add_opt_in_form, add_product_showcase
 
-## Common Multi-Step Patterns
-- "Delete all except X" → list_files → filter → delete_file (multiple times)
-- "Edit and add content" → read_file → modify → edit_file
-- "Create page with content" → create_file with full HTML
-- "Update multiple files" → list → read each → edit each
+## Current Working Context
+- Type: ${contextType || 'none'}
+- Path: ${contextPath || 'root'}
+- Tenant: ${tenantId}
 
-## Remember
-- You're intelligent - understand natural language
-- You're thorough - complete ALL steps
-- You're context-aware - use the selected folder/file
-- You're persistent - don't stop until done
-
-CURRENT WORKING CONTEXT: ${contextPath || 'root'}`
+REMEMBER: The user has selected ${contextType === 'file' ? `the file "${contextPath}"` : contextType === 'folder' ? `the folder "${contextPath}"` : 'no specific context'}. This is what they're referring to when they say "this", "it", "here", etc.`
     
     // Prepare messages for Claude (no system role in messages)
     // Filter out system messages and empty content
@@ -230,8 +256,9 @@ CURRENT WORKING CONTEXT: ${contextPath || 'root'}`
 
 ## CRITICAL: Action Plan Generation
 You must respond with a structured action plan in JSON format.
-Analyze the user's request and generate a complete plan with all necessary tool calls.
-Include ALL parameters for each tool, using the context path when needed.
+IMPORTANT: Consider the current context - the user has ${contextType === 'file' ? `selected the file "${contextPath}"` : contextType === 'folder' ? `selected the folder "${contextPath}"` : 'not selected any specific file or folder'}.
+
+When the user says "this", "it", "here", they mean: ${contextPath || 'root'}
 
 Respond ONLY with valid JSON in this format:
 {
@@ -247,10 +274,12 @@ Respond ONLY with valid JSON in this format:
   "summary": "What will be accomplished"
 }
 
-REMEMBER:
-- Use contextPath (${contextPath || '/'}) as default for file operations
-- Include ALL required parameters for each tool
-- Chain operations properly (read before edit, list before delete, etc.)`,
+CRITICAL RULES FOR PARAMETERS:
+- For create_file: MUST include both path (with filename) and content
+- For edit_file: MUST first read_file, then provide COMPLETE new content
+- For delete_file: MUST include the full path to the file
+- Default to contextPath: "${contextPath || '/'}" for all operations
+- When editing: ALWAYS read first, modify content, then edit with FULL content`,
             messages: [...messages, { role: 'user' as const, content: `Generate an action plan for: ${message}` }] as any,
             tools: [], // No tools in planning phase
           })

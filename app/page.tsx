@@ -88,9 +88,9 @@ export default function PageBuilderDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b-2 border-black">
+      <header className="bg-white border-b-2 border-black flex-shrink-0">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
@@ -122,7 +122,7 @@ export default function PageBuilderDashboard() {
       </header>
 
       {/* Main Content - File System */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left Sidebar - File Browser */}
         <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="border-b border-gray-200 px-4 py-3">
@@ -160,7 +160,7 @@ export default function PageBuilderDashboard() {
       </div>
 
       {/* Status Bar */}
-      <div className="bg-gray-800 text-white text-xs px-4 py-2 flex justify-between">
+      <div className="bg-gray-800 text-white text-xs px-4 py-2 flex justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
           <span>🟢 Connected to NUM Gate</span>
           <span>|</span>

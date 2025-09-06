@@ -21,25 +21,25 @@ interface Tool {
  */
 export const updateSectionTool: Tool = {
   name: 'update_section',
-  description: 'Update a specific section of an HTML page while preserving the rest of the content. Use this for targeted edits.',
+  description: 'Update section of HTML page. Use when user says: "change the header", "update hero", "modify footer", "fix navigation", "replace section", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file to edit'
+        description: 'HTML file path. SMART EXTRACTION: "this page" = current context. "homepage" = index.html. Infer from conversation.'
       },
       selector: {
         type: 'string',
-        description: 'CSS selector for the element to update (e.g., "#hero", ".header", "section:first-of-type")'
+        description: 'CSS selector. SMART MAPPING: "header" → "header,#header,.header", "hero" → "#hero,.hero,section:first", "footer" → "footer,#footer,.footer". Handle natural language.'
       },
       new_content: {
         type: 'string',
-        description: 'The new HTML content for the selected section'
+        description: 'New HTML content. SMART GENERATION: Keep existing styles unless changing. Add responsive classes. Use semantic HTML5. Preserve links/functionality.'
       },
       preserve_attributes: {
         type: 'boolean',
-        description: 'Whether to preserve existing attributes like id and classes',
+        description: 'Keep existing IDs/classes. DEFAULT: true unless user wants complete replacement.',
         default: true
       }
     },
@@ -52,13 +52,13 @@ export const updateSectionTool: Tool = {
  */
 export const getPreviewStateTool: Tool = {
   name: 'get_preview_state',
-  description: 'Get the current structure of an HTML page, including all sections and their content. Use this to understand what\'s on the page before making edits.',
+  description: 'Analyze HTML structure/content. Use when user says: "show preview", "what\'s on the page", "analyze structure", "check layout", "inspect page", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file to analyze'
+        description: 'HTML file to analyze. SMART DEFAULTS: Empty/"this" = current context. Auto-add .html if missing. "homepage" = index.html.'
       }
     },
     required: ['path']
@@ -70,21 +70,21 @@ export const getPreviewStateTool: Tool = {
  */
 export const findElementTool: Tool = {
   name: 'find_element',
-  description: 'Find an element on the page by its text content. Returns the CSS selector for the element.',
+  description: 'Find element by text. Use when user says: "find text X", "where does it say Y", "locate the button that says", "search for", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file to search. SMART DEFAULT: Current context if not specified.'
       },
       text: {
         type: 'string',
-        description: 'The text content to search for'
+        description: 'Text to find. SMART EXTRACTION: Extract exact or partial text from user request. Handle quotes and case variations.'
       },
       tag_name: {
         type: 'string',
-        description: 'Optional: limit search to specific tag type (e.g., "h1", "p", "button")'
+        description: 'Tag filter. SMART MAPPING: "heading" → "h1,h2,h3", "button" → "button", "link" → "a", "paragraph" → "p".'
       }
     },
     required: ['path', 'text']
@@ -96,42 +96,42 @@ export const findElementTool: Tool = {
  */
 export const updateElementTool: Tool = {
   name: 'update_element',
-  description: 'Update the text, attributes, or classes of a specific element without changing its structure.',
+  description: 'Update element properties. Use when user says: "change button text", "update link", "add class", "modify attributes", "style element", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context if not specified.'
       },
       selector: {
         type: 'string',
-        description: 'CSS selector for the element to update'
+        description: 'Element selector. SMART EXTRACTION: "the button" → "button", "main heading" → "h1", "first link" → "a:first-of-type". Be specific.'
       },
       updates: {
         type: 'object',
         properties: {
           text: {
             type: 'string',
-            description: 'New text content for the element'
+            description: 'New text. EXTRACT from user: "change text to X", "make it say Y".'
           },
           html: {
             type: 'string',
-            description: 'New inner HTML for the element'
+            description: 'New inner HTML. Use when adding formatted content, icons, or nested elements.'
           },
           attributes: {
             type: 'object',
-            description: 'Attributes to set (e.g., {"href": "https://example.com"})'
+            description: 'Attributes. SMART MAPPING: "link to X" → {"href": "X"}, "new image" → {"src": "X"}.'
           },
           add_class: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Classes to add to the element'
+            description: 'Classes to add. EXTRACT: "make it red" → ["text-red-500"], "center it" → ["text-center"].'
           },
           remove_class: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Classes to remove from the element'
+            description: 'Classes to remove. EXTRACT: "remove styling" → all style classes.'
           }
         }
       }
@@ -145,26 +145,26 @@ export const updateElementTool: Tool = {
  */
 export const addElementTool: Tool = {
   name: 'add_element',
-  description: 'Add a new element to the page at a specific position relative to an existing element.',
+  description: 'Add new HTML element. Use when user says: "add button", "insert image", "create form", "put section", "include", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       parent_selector: {
         type: 'string',
-        description: 'CSS selector for the parent/reference element'
+        description: 'Where to add. SMART EXTRACTION: "in header" → "header", "after title" → "h1", "at end" → "body", "in main" → "main".'
       },
       html: {
         type: 'string',
-        description: 'The HTML content to add'
+        description: 'HTML to insert. SMART GENERATION: Create complete valid HTML. Add Tailwind classes. Match existing styles. Include responsive design.'
       },
       position: {
         type: 'string',
         enum: ['before', 'after', 'prepend', 'append'],
-        description: 'Where to insert relative to parent (before/after as sibling, prepend/append as child)',
+        description: 'Position. SMART MAPPING: "at start" → prepend, "at end" → append, "after X" → after, "before Y" → before',
         default: 'append'
       }
     },
@@ -177,17 +177,17 @@ export const addElementTool: Tool = {
  */
 export const removeElementTool: Tool = {
   name: 'remove_element',
-  description: 'Remove an element from the page.',
+  description: 'Remove element from page. Use when user says: "delete", "remove", "take out", "get rid of", "clean up", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       selector: {
         type: 'string',
-        description: 'CSS selector for the element to remove'
+        description: 'Element to remove. SMART EXTRACTION: "the banner" → "#banner,.banner", "all ads" → ".ad", "empty paragraphs" → "p:empty". Be careful with broad selectors.'
       }
     },
     required: ['path', 'selector']
@@ -199,17 +199,17 @@ export const removeElementTool: Tool = {
  */
 export const inspectElementTool: Tool = {
   name: 'inspect_element',
-  description: 'Get detailed information about a specific element including its attributes, classes, and content.',
+  description: 'Get element details. Use when user says: "inspect", "what styles", "check properties", "analyze element", "show attributes", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       selector: {
         type: 'string',
-        description: 'CSS selector for the element to inspect'
+        description: 'Element to inspect. SMART EXTRACTION: Natural language to CSS. "the button" → "button:first", "all headings" → "h1,h2,h3".'
       }
     },
     required: ['path', 'selector']

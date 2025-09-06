@@ -28,32 +28,32 @@ interface Tool {
  */
 export const addWebinarRegistrationTool: Tool = {
   name: 'add_webinar_registration',
-  description: 'Add a registration form for a webinar that integrates with the webinar system',
+  description: 'Add webinar registration. Use when user says: "add webinar signup", "registration form", "event registration", "webinar form", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       webinar_id: {
         type: 'string',
-        description: 'ID of the webinar from the system'
+        description: 'Webinar ID. SMART EXTRACTION: If user mentions webinar name/date, use as ID. Default to "webinar-1" if not specified.'
       },
       target_selector: {
         type: 'string',
-        description: 'Where to insert the form'
+        description: 'Where to insert. SMART MAPPING: "after hero" → "#hero", "in sidebar" → "aside", "main area" → "main".'
       },
       style: {
         type: 'string',
         enum: ['inline', 'modal', 'fullwidth', 'compact'],
-        description: 'Form style',
+        description: 'Form style. SMART DEFAULT: "inline" unless user says "popup" → modal, "full width" → fullwidth.',
         default: 'inline'
       },
       fields: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Fields to include (name, email, phone, company, etc.)',
+        description: 'Form fields. SMART EXTRACTION: If user mentions "phone", add it. "company info" → add company field. Default: name, email.',
         default: ['name', 'email']
       }
     },
@@ -66,31 +66,31 @@ export const addWebinarRegistrationTool: Tool = {
  */
 export const addPaymentFormTool: Tool = {
   name: 'add_payment_form',
-  description: 'Add a payment form that integrates with the payment system',
+  description: 'Add payment/checkout form. Use when user says: "payment form", "checkout", "buy button", "purchase form", "payment gateway", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       product_id: {
         type: 'string',
-        description: 'ID of the product to purchase'
+        description: 'Product ID. SMART EXTRACTION: Use product name from user as ID. Default "product-1" if not mentioned.'
       },
       target_selector: {
         type: 'string',
-        description: 'Where to insert the form'
+        description: 'Where to insert. SMART MAPPING: "pricing section" → "#pricing", "after product" → ".product-card".'
       },
       payment_methods: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Payment methods to accept',
+        description: 'Payment methods. SMART EXTRACTION: "accept crypto" → add ["crypto"], "stripe" → add ["stripe"]. Default: card, paypal.',
         default: ['card', 'paypal']
       },
       currency: {
         type: 'string',
-        description: 'Currency code',
+        description: 'Currency. SMART EXTRACTION: "euros" → "EUR", "pounds" → "GBP". Default USD.',
         default: 'USD'
       }
     },
@@ -103,37 +103,37 @@ export const addPaymentFormTool: Tool = {
  */
 export const addLmsCourseCardTool: Tool = {
   name: 'add_lms_course_card',
-  description: 'Add course cards that pull data from the LMS system',
+  description: 'Add course cards/catalog. Use when user says: "course cards", "training catalog", "LMS courses", "educational content", "course grid", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       course_ids: {
         type: 'array',
         items: { type: 'string' },
-        description: 'IDs of courses to display'
+        description: 'Course IDs. SMART EXTRACTION: Use course names as IDs. "3 courses" → generate 3 IDs. Default: ["course-1", "course-2", "course-3"].'
       },
       target_selector: {
         type: 'string',
-        description: 'Where to insert the cards'
+        description: 'Where to insert. SMART MAPPING: "courses section" → "#courses", "main content" → "main".'
       },
       layout: {
         type: 'string',
         enum: ['grid', 'list', 'carousel'],
-        description: 'Layout for course cards',
+        description: 'Layout. SMART MAPPING: "slider" → carousel, "cards" → grid, "vertical" → list. Default: grid.',
         default: 'grid'
       },
       show_price: {
         type: 'boolean',
-        description: 'Show course price',
+        description: 'Show prices. DEFAULT: true unless user says "free courses" or "hide prices".',
         default: true
       },
       show_enrollment: {
         type: 'boolean',
-        description: 'Show enrollment count',
+        description: 'Show student count. DEFAULT: true for credibility.',
         default: true
       }
     },
@@ -146,17 +146,17 @@ export const addLmsCourseCardTool: Tool = {
  */
 export const addTestimonialSectionTool: Tool = {
   name: 'add_testimonial_section',
-  description: 'Add testimonials that pull from the database',
+  description: 'Add testimonials/reviews. Use when user says: "customer reviews", "testimonials", "social proof", "client feedback", "success stories", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       target_selector: {
         type: 'string',
-        description: 'Where to insert testimonials'
+        description: 'Where to insert. SMART MAPPING: "after features" → ".features-section", "before footer" → "footer".'
       },
       filter: {
         type: 'object',
@@ -165,17 +165,17 @@ export const addTestimonialSectionTool: Tool = {
           rating_min: { type: 'number' },
           featured: { type: 'boolean' }
         },
-        description: 'Filter criteria for testimonials'
+        description: 'Filters. SMART EXTRACTION: "5 star only" → rating_min: 5, "featured" → featured: true.'
       },
       limit: {
         type: 'number',
-        description: 'Maximum number of testimonials',
+        description: 'Number to show. SMART EXTRACTION: "show 5 testimonials" → 5. Default: 3.',
         default: 3
       },
       layout: {
         type: 'string',
         enum: ['cards', 'carousel', 'masonry'],
-        description: 'Layout style',
+        description: 'Layout. SMART MAPPING: "slider" → carousel, "grid" → cards, "pinterest style" → masonry.',
         default: 'cards'
       }
     },
@@ -188,21 +188,21 @@ export const addTestimonialSectionTool: Tool = {
  */
 export const addOptInFormTool: Tool = {
   name: 'add_opt_in_form',
-  description: 'Add an email opt-in form that integrates with the CRM',
+  description: 'Add email signup/newsletter. Use when user says: "newsletter signup", "email capture", "mailing list", "subscribe form", "lead magnet", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       target_selector: {
         type: 'string',
-        description: 'Where to insert the form'
+        description: 'Where to insert. SMART MAPPING: "header" → "header", "sidebar" → "aside", "footer" → "footer".'
       },
       list_id: {
         type: 'string',
-        description: 'Email list ID to subscribe to'
+        description: 'List ID. SMART EXTRACTION: Use list name from user or default "newsletter". E.g., "VIP list" → "vip-list".'
       },
       offer: {
         type: 'object',
@@ -211,12 +211,12 @@ export const addOptInFormTool: Tool = {
           description: { type: 'string' },
           button_text: { type: 'string' }
         },
-        description: 'Offer details for the opt-in'
+        description: 'Offer text. SMART GENERATION: Extract from user "Get 10% off" → generate full offer copy. Create compelling copy if not specified.'
       },
       style: {
         type: 'string',
         enum: ['inline', 'popup', 'sticky-bar', 'sidebar'],
-        description: 'Form display style',
+        description: 'Display style. SMART MAPPING: "popup" → popup, "sticky" → sticky-bar, "top bar" → sticky-bar. Default: inline.',
         default: 'inline'
       }
     },
@@ -229,32 +229,32 @@ export const addOptInFormTool: Tool = {
  */
 export const addProductShowcaseTool: Tool = {
   name: 'add_product_showcase',
-  description: 'Add a product showcase that pulls from the product catalog',
+  description: 'Add product showcase/catalog. Use when user says: "product grid", "showcase products", "product cards", "shop section", "merchandise", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       target_selector: {
         type: 'string',
-        description: 'Where to insert the showcase'
+        description: 'Where to insert. SMART MAPPING: "shop section" → "#shop", "products area" → ".products", "main" → "main".'
       },
       product_ids: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Product IDs to showcase'
+        description: 'Product IDs. SMART EXTRACTION: Use product names as IDs. "3 products" → ["product-1", "product-2", "product-3"]. Extract from context.'
       },
       layout: {
         type: 'string',
         enum: ['grid', 'slider', 'featured', 'comparison'],
-        description: 'Showcase layout',
+        description: 'Layout. SMART MAPPING: "carousel" → slider, "compare" → comparison, "highlight" → featured. Default: grid.',
         default: 'grid'
       },
       show_add_to_cart: {
         type: 'boolean',
-        description: 'Show add to cart button',
+        description: 'Cart button. DEFAULT: true unless user says "catalog only" or "no purchasing".',
         default: true
       }
     },

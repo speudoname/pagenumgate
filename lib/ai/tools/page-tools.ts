@@ -21,28 +21,28 @@ interface Tool {
  */
 export const addSectionTool: Tool = {
   name: 'add_section',
-  description: 'Add a complete pre-built section to the page (hero, features, testimonials, etc.)',
+  description: 'Add pre-built section. Use when user says: "add hero", "create features section", "put testimonials", "need contact form", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context. "this page" = current file.'
       },
       section_type: {
         type: 'string',
         enum: ['hero', 'features', 'testimonials', 'pricing', 'cta', 'footer', 'header', 'contact', 'about', 'gallery'],
-        description: 'Type of section to add'
+        description: 'Section type. SMART EXTRACTION: "landing" → hero, "reviews" → testimonials, "prices" → pricing, "call to action" → cta.'
       },
       position: {
         type: 'string',
         enum: ['start', 'end', 'after-header', 'before-footer'],
-        description: 'Where to place the section',
+        description: 'Where to add. SMART MAPPING: "at top" → start, "at bottom" → end, "after nav" → after-header',
         default: 'end'
       },
       content: {
         type: 'object',
-        description: 'Content configuration for the section',
+        description: 'Section content. SMART GENERATION: Extract title/subtitle from user request. Generate items if mentioned.',
         properties: {
           title: { type: 'string' },
           subtitle: { type: 'string' },
@@ -62,22 +62,22 @@ export const addSectionTool: Tool = {
  */
 export const applyThemeTool: Tool = {
   name: 'apply_theme',
-  description: 'Apply a design theme to the entire page or specific sections',
+  description: 'Apply design theme. Use when user says: "make it modern", "brutal design", "minimalist style", "dark mode", "apply gradient", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       theme: {
         type: 'string',
         enum: ['modern', 'classic', 'minimal', 'bold', 'neomorphic', 'neo-brutalist', 'gradient', 'dark'],
-        description: 'Theme to apply'
+        description: 'Theme. SMART MAPPING: "brutal" → neo-brutalist, "clean" → minimal, "professional" → modern, "night" → dark, "simple" → minimal.'
       },
       target: {
         type: 'string',
-        description: 'CSS selector for specific section, or "all" for entire page',
+        description: 'Target section or "all". SMART DEFAULT: "all" unless user specifies section.',
         default: 'all'
       }
     },
@@ -90,26 +90,26 @@ export const applyThemeTool: Tool = {
  */
 export const updateLayoutTool: Tool = {
   name: 'update_layout',
-  description: 'Change the layout structure of a section (columns, grid, flex)',
+  description: 'Change layout structure. Use when user says: "make it 2 columns", "create grid", "side by side", "stack vertically", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       selector: {
         type: 'string',
-        description: 'CSS selector for the container to update'
+        description: 'Container selector. SMART EXTRACTION: "the features" → ".features-section", "main content" → "main", "the cards" → ".card-container".'
       },
       layout: {
         type: 'string',
         enum: ['single-column', 'two-columns', 'three-columns', 'grid-2x2', 'grid-3x3', 'flex-row', 'flex-column'],
-        description: 'New layout structure'
+        description: 'Layout. SMART MAPPING: "2 cols" → two-columns, "grid" → grid-2x2, "horizontal" → flex-row, "vertical" → flex-column, "cards" → three-columns.'
       },
       responsive: {
         type: 'boolean',
-        description: 'Make layout responsive',
+        description: 'Responsive layout. DEFAULT: true (always responsive unless user says "fixed").',
         default: true
       }
     },
@@ -122,30 +122,30 @@ export const updateLayoutTool: Tool = {
  */
 export const optimizeSeoTool: Tool = {
   name: 'optimize_seo',
-  description: 'Optimize page for search engines by updating meta tags, structure, and content',
+  description: 'Optimize for SEO. Use when user says: "improve SEO", "add meta tags", "optimize for search", "set page title", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       title: {
         type: 'string',
-        description: 'Page title for SEO'
+        description: 'Page title. SMART EXTRACTION: Extract from user request or generate based on content. Include brand/company if mentioned.'
       },
       description: {
         type: 'string',
-        description: 'Meta description'
+        description: 'Meta description. SMART GENERATION: Create compelling 150-160 char description from user context or page content.'
       },
       keywords: {
         type: 'array',
         items: { type: 'string' },
-        description: 'SEO keywords'
+        description: 'Keywords. SMART EXTRACTION: Extract relevant terms from user request and page topic. Include variations.'
       },
       ogImage: {
         type: 'string',
-        description: 'Open Graph image URL'
+        description: 'Social media image. SMART DEFAULT: Use if user provides image URL or mentions "social preview".'
       }
     },
     required: ['path']
@@ -157,31 +157,31 @@ export const optimizeSeoTool: Tool = {
  */
 export const addComponentTool: Tool = {
   name: 'add_component',
-  description: 'Insert a pre-built component from the component library',
+  description: 'Add pre-built component. Use when user says: "add button", "insert card", "create form", "product component", etc.',
   input_schema: {
     type: 'object',
     properties: {
       path: {
         type: 'string',
-        description: 'The path to the HTML file'
+        description: 'HTML file. SMART DEFAULT: Current context.'
       },
       component: {
         type: 'string',
-        description: 'Component name from library (e.g., "button-primary", "card-product", "form-contact")'
+        description: 'Component name. SMART MAPPING: "button" → "button-primary", "card" → "card-product", "form" → "form-contact". Infer from user request.'
       },
       target_selector: {
         type: 'string',
-        description: 'Where to insert the component'
+        description: 'Insert location. SMART EXTRACTION: "in the header" → "header", "after hero" → "#hero", "at the end" → "body".'
       },
       position: {
         type: 'string',
         enum: ['before', 'after', 'prepend', 'append'],
-        description: 'Position relative to target',
+        description: 'Position. SMART DEFAULT: "append" unless user says "before", "after", "at start".',
         default: 'append'
       },
       props: {
         type: 'object',
-        description: 'Component properties/configuration'
+        description: 'Component props. SMART EXTRACTION: Extract text, labels, links from user request. E.g., "button saying Buy Now" → {text: "Buy Now"}.'
       }
     },
     required: ['path', 'component', 'target_selector']

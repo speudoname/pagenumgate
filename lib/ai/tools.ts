@@ -21,21 +21,21 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
   const fileTools = [
     {
       name: 'create_file',
-      description: 'Create a new file with content. Use this when user asks to "create a page", "create a file", "make a new page", etc.',
+      description: 'Create a new file with content. Use when user says: "create a page", "make a file", "build a page", "new page for X", "landing page", etc. ALWAYS extract filename from context.',
       input_schema: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'File path with extension (e.g., "index.html", "styles.css"). Extract filename from user request - if they mention a name like "levan", use "levan.html". For pages, always use .html extension.'
+            description: 'File path with extension. SMART EXTRACTION: If user mentions a name/topic (e.g., "for levan", "about products", "contact form"), use it as filename (e.g., "levan.html", "products.html", "contact.html"). Default to "index.html" if no name given. Always add appropriate extension (.html for pages, .css for styles, etc.)'
           },
           content: {
             type: 'string',
-            description: 'Complete file content. For HTML, generate complete valid HTML with DOCTYPE. Apply any requested styles (brutal, modern, minimal). Include any requested text/messages prominently.'
+            description: 'Complete file content. SMART GENERATION: For HTML, create full valid document with DOCTYPE. Apply mentioned styles (brutal=bold borders/colors, modern=clean gradients, minimal=simple/white). Include ALL mentioned text/messages prominently. Add semantic HTML5 structure. Include responsive design.'
           },
           fileType: {
             type: 'string',
-            description: 'Optional: File type will be auto-detected from extension',
+            description: 'Optional: Auto-detected from extension. Only specify if ambiguous.',
             enum: ['html', 'css', 'js', 'json', 'md', 'txt', 'xml', 'yaml']
           }
         },
@@ -44,17 +44,17 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
     },
     {
       name: 'edit_file',
-      description: 'Edit an existing file by replacing content',
+      description: 'Edit/update existing file content. Use when user says: "change", "update", "modify", "fix", "improve", "add to", etc. MUST read file first to know current content.',
       input_schema: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'File path to edit'
+            description: 'File path to edit. SMART EXTRACTION: If user references "this file", "the page", "it" - use current context file. If they mention specific file like "the contact page", infer "contact.html".'
           },
           content: {
             type: 'string',
-            description: 'New content for the file'
+            description: 'New complete content. SMART EDITING: Preserve existing structure/styles unless told to change. Apply incremental changes. Keep file type consistency. Maintain any existing functionality.'
           }
         },
         required: ['path', 'content']
@@ -62,13 +62,13 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
     },
     {
       name: 'delete_file',
-      description: 'Delete a file or folder',
+      description: 'Delete file or folder. Use when user says: "delete", "remove", "get rid of", "clean up", "trash", etc.',
       input_schema: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'Path to delete'
+            description: 'Path to delete. SMART EXTRACTION: If user says "this", "it", "the file" - use current context. If they say "everything", confirm scope. Handle "all X files" by listing first.'
           }
         },
         required: ['path']
@@ -76,13 +76,13 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
     },
     {
       name: 'read_file',
-      description: 'Read the contents of a file',
+      description: 'Read file contents. Use when user says: "show", "what\'s in", "open", "view", "check", "look at", etc.',
       input_schema: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'File path to read'
+            description: 'File path to read. SMART EXTRACTION: "this file"/"current" = context path. "the styles" = infer styles.css. "homepage" = index.html. Check common naming patterns.'
           }
         },
         required: ['path']
@@ -90,13 +90,13 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
     },
     {
       name: 'list_files',
-      description: 'List files in a directory',
+      description: 'List directory contents. Use when user says: "what files", "show files", "list", "what\'s here", "directory contents", etc.',
       input_schema: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'Directory path to list (optional, defaults to current context)'
+            description: 'Directory to list. SMART DEFAULTS: Empty/null = current context directory. "here"/"this folder" = current context. "root" = tenant root. Auto-append / for folders.'
           }
         },
         required: []
@@ -104,13 +104,13 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
     },
     {
       name: 'create_folder',
-      description: 'Create a new folder',
+      description: 'Create new folder/directory. Use when user says: "create folder", "make directory", "new folder", "organize into", etc.',
       input_schema: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'Folder path to create'
+            description: 'Folder path. SMART EXTRACTION: Extract name from context (e.g., "for images" → "images/", "components folder" → "components/"). Create nested paths if mentioned.'
           }
         },
         required: ['path']
@@ -118,17 +118,17 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
     },
     {
       name: 'move_file',
-      description: 'Move or rename a file',
+      description: 'Move or rename files. Use when user says: "rename", "move", "change name", "relocate", "organize", etc.',
       input_schema: {
         type: 'object',
         properties: {
           from: {
             type: 'string',
-            description: 'Source file path'
+            description: 'Source path. SMART EXTRACTION: "this file" = current context. Handle wildcards conceptually (e.g., "all images" = iterate image files).'
           },
           to: {
             type: 'string',
-            description: 'Destination file path'
+            description: 'Destination path. SMART EXTRACTION: For renames, keep same directory. For moves, preserve filename unless changing. Handle "to X folder" patterns.'
           }
         },
         required: ['from', 'to']

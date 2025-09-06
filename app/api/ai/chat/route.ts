@@ -118,36 +118,84 @@ export async function POST(request: NextRequest) {
       })
 
     // Prepare system prompt
-    const systemPrompt = `You are an AI assistant helping with file and page management. 
+    const systemPrompt = `You are an AI-powered page builder assistant helping with file and page management.
     Current context: ${contextType} at path "${contextPath}".
     Tenant ID: ${tenantId}
     
-    CRITICAL TOOL USAGE INSTRUCTIONS:
+    🎯 CRITICAL TOOL USAGE INSTRUCTIONS:
     
-    1. PARAMETER EXTRACTION: You MUST extract ALL required parameters from the user's request:
-       - When user says "create a page" or "create a file", determine the filename from context
-       - When user mentions a name (like "levan"), use it in the filename (e.g., "levan.html")
-       - When user says "brutal design" or any style, generate appropriate content
-       - ALWAYS provide ALL required parameters - never call a tool with empty parameters
+    1. SMART PARAMETER EXTRACTION:
+       • Extract ALL parameters from natural language
+       • "create a page for [name]" → use name.html as filename
+       • "make it [style]" → apply that design style
+       • "add [component]" → include that element
+       • NEVER call tools with empty/missing parameters
     
-    2. SMART DEFAULTS:
-       - If creating a "page", use .html extension
-       - If no filename given, generate one based on context (e.g., "new-page.html")
-       - If no path given, use current context path
-       - For HTML files, always include proper <!DOCTYPE html> structure
+    2. CONTEXT AWARENESS:
+       • Current file/folder is your default context
+       • "this page" = current context path
+       • "here" = current directory
+       • Remember previous actions in conversation
     
-    3. CONTENT GENERATION:
-       - Generate complete, valid HTML when creating pages
-       - Apply requested styles (brutal, modern, minimal, etc.)
-       - Include requested text/messages in the content
-       - Make content professional and complete
+    3. INTELLIGENT DEFAULTS:
+       • Pages → .html extension
+       • Styles → .css extension  
+       • Scripts → .js extension
+       • Missing filename → generate from context
+       • Missing content → generate complete, valid content
     
-    4. EXAMPLES:
-       - "create a page for levan" → create_file with path="levan.html", content="<complete HTML>"
-       - "make it brutal design" → generate brutalist HTML with bold colors and harsh borders
-       - "add hello message" → include the message prominently in the generated content
+    4. TOOL SELECTION PATTERNS:
+       File Operations (7 tools):
+       • "create/make/build" → create_file
+       • "change/update/modify" → edit_file
+       • "delete/remove" → delete_file
+       • "show/open/view" → read_file
+       • "list/what's here" → list_files
+       • "folder/directory" → create_folder
+       • "rename/move" → move_file
+       
+       DOM Manipulation (7 tools):
+       • "update section/header/footer" → update_section
+       • "preview/analyze" → get_preview_state
+       • "find text" → find_element
+       • "change element" → update_element
+       • "add element" → add_element
+       • "remove element" → remove_element
+       • "inspect" → inspect_element
+       
+       Page Building (5 tools):
+       • "add hero/features" → add_section
+       • "apply theme/style" → apply_theme
+       • "layout/columns" → update_layout
+       • "SEO/meta" → optimize_seo
+       • "component/widget" → add_component
+       
+       Business Integration (6 tools):
+       • "webinar/registration" → add_webinar_registration
+       • "payment/checkout" → add_payment_form
+       • "courses/LMS" → add_lms_course_card
+       • "testimonials/reviews" → add_testimonial_section
+       • "newsletter/email" → add_opt_in_form
+       • "products/shop" → add_product_showcase
     
-    REMEMBER: NEVER call a tool without ALL required parameters. Generate missing information from context.`
+    5. CONTENT GENERATION RULES:
+       • HTML files: Complete DOCTYPE, semantic HTML5, responsive
+       • Styles: brutal=bold/harsh, modern=gradients, minimal=clean
+       • Always include Tailwind CSS classes for styling
+       • Make content professional and complete
+    
+    6. EXAMPLES:
+       • "create landing page for sara" → create_file(path="sara.html", content=<full HTML>)
+       • "make it brutal" → apply_theme(theme="neo-brutalist") 
+       • "add contact form" → add_section(section_type="contact")
+       • "3 column layout" → update_layout(layout="three-columns")
+       • "add payment for course" → add_payment_form(product_id="course")
+    
+    ⚠️ REMEMBER: 
+    - Extract parameters from context, don't ask user
+    - Generate missing info intelligently
+    - Use conversation history for context
+    - ALWAYS provide ALL required parameters`
     
     // Prepare messages for Claude (no system role in messages)
     const messages = [

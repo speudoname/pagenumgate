@@ -383,7 +383,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
   }
 
   return (
-    <div className="flex flex-col bg-white overflow-hidden" style={{ height: '600px' }}>
+    <div className="flex flex-col h-full bg-white overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div>

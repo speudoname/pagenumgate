@@ -20,24 +20,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { sessionId, contextType, contextPath, message, history } = await request.json()
+    const { sessionId, contextType, contextPath, message, history, model = 'claude-3-5-sonnet-latest' } = await request.json()
 
-    // Get API key for tenant
-    const { data: apiKeyData, error: keyError } = await supabase
+    // Get API key - first check database, then fallback to environment variable
+    let apiKey: string | null = null
+    
+    // Try to get tenant-specific API key from database
+    const { data: apiKeyData } = await supabase
       .from('ai_api_keys')
       .select('encrypted_key')
       .eq('tenant_id', tenantId)
       .single()
 
-    if (keyError || !apiKeyData) {
-      return NextResponse.json({ 
-        error: 'No API key configured. Please add your Claude API key in settings.' 
-      }, { status: 400 })
+    if (apiKeyData?.encrypted_key) {
+      // Decrypt API key (in production, use proper encryption)
+      // For now, we'll store it as plain text with a simple prefix
+      apiKey = apiKeyData.encrypted_key.replace('encrypted:', '')
+    } else if (process.env.ANTHROPIC_API_KEY) {
+      // Fallback to environment variable if no tenant-specific key
+      apiKey = process.env.ANTHROPIC_API_KEY
     }
 
-    // Decrypt API key (in production, use proper encryption)
-    // For now, we'll store it as plain text with a simple prefix
-    const apiKey = apiKeyData.encrypted_key.replace('encrypted:', '')
+    if (!apiKey) {
+      return NextResponse.json({ 
+        error: 'No API key configured. Please add your Claude API key in settings or set ANTHROPIC_API_KEY environment variable.' 
+      }, { status: 400 })
+    }
 
     // Initialize Anthropic client
     const anthropic = new Anthropic({
@@ -55,6 +63,7 @@ export async function POST(request: NextRequest) {
           context_type: contextType,
           context_path: contextPath,
           title: `Chat on ${contextPath || 'root'}`,
+          model: model,
         })
         .select()
         .single()
@@ -107,9 +116,19 @@ export async function POST(request: NextRequest) {
           // Get available tools
           const tools = getTools(contextType, contextPath, tenantId)
 
+          // Map model names to Anthropic model IDs
+          const modelMapping: Record<string, string> = {
+            'claude-3-5-sonnet-latest': 'claude-3-5-sonnet-20241022',
+            'claude-3-opus-latest': 'claude-3-opus-20240229',
+            'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet-20241022',
+            'claude-3-opus-20240229': 'claude-3-opus-20240229'
+          }
+
+          const selectedModel = modelMapping[model] || 'claude-3-5-sonnet-20241022'
+
           // Create message with Claude
           const response = await anthropic.messages.create({
-            model: 'claude-3-5-sonnet-20241022',
+            model: selectedModel,
             max_tokens: 4096,
             messages: messages as any,
             tools: tools,

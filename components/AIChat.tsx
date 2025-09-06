@@ -31,6 +31,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
+  const [selectedModel, setSelectedModel] = useState<string>('claude-3-5-sonnet-latest')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -101,7 +102,8 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
           contextType,
           contextPath,
           message: userMessage.content,
-          history: messages
+          history: messages,
+          model: selectedModel
         }),
         signal: abortControllerRef.current.signal
       })
@@ -247,6 +249,16 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Model Switcher */}
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="text-sm border rounded px-2 py-1"
+            title="Select AI Model"
+          >
+            <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Fast)</option>
+            <option value="claude-3-opus-latest">Claude 3 Opus (Powerful)</option>
+          </select>
           <button
             onClick={clearHistory}
             className="text-sm text-gray-500 hover:text-gray-700"

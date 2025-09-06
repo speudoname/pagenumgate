@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to check API key' }, { status: 500 })
     }
 
-    return NextResponse.json({ hasKey: !!data })
+    // Check both database and environment variable
+    const hasKey = !!data || !!process.env.ANTHROPIC_API_KEY
+
+    return NextResponse.json({ hasKey })
   } catch (error) {
     logger.error('Check key API error:', error)
     return NextResponse.json(

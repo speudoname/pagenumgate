@@ -10,6 +10,39 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 )
 
+function getErrorSuggestion(toolName: string, error: any): string {
+  const errorMessage = error instanceof Error ? error.message.toLowerCase() : ''
+  
+  if (errorMessage.includes('not found')) {
+    return '💡 Check if the file path is correct and the file exists'
+  }
+  if (errorMessage.includes('permission')) {
+    return '💡 You may not have permission to perform this operation'
+  }
+  if (errorMessage.includes('already exists')) {
+    return '💡 Try using a different name or delete the existing file first'
+  }
+  if (errorMessage.includes('invalid path')) {
+    return '💡 Make sure the path doesn\'t contain invalid characters or ".."'
+  }
+  if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+    return '💡 Network issue detected. Please try again'
+  }
+  
+  // Tool-specific suggestions
+  if (toolName === 'create_file') {
+    return '💡 Check if the folder exists and you have write permissions'
+  }
+  if (toolName === 'delete_file') {
+    return '💡 Make sure the file exists and is not being used'
+  }
+  if (toolName === 'move_file') {
+    return '💡 Check both source and destination paths are valid'
+  }
+  
+  return '💡 Please check your input and try again'
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Get auth headers
@@ -171,31 +204,75 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Execute any tool calls
+          // Execute any tool calls with detailed status updates
           if (toolsCalled.length > 0) {
             for (const tool of toolsCalled) {
+              const startTime = Date.now()
+              
+              // Send tool execution start status
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                type: 'tool_status', 
+                tool: tool.name,
+                status: 'starting',
+                message: `🔧 Starting ${tool.name}...`,
+                input: tool.input
+              })}\n\n`))
+
               try {
+                // Send detailed progress updates based on tool type
+                if (tool.name === 'create_file') {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'tool_progress',
+                    tool: tool.name,
+                    message: `📝 Creating file: ${tool.input.path}`
+                  })}\n\n`))
+                } else if (tool.name === 'edit_file') {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'tool_progress',
+                    tool: tool.name,
+                    message: `✏️ Editing file: ${tool.input.path}`
+                  })}\n\n`))
+                } else if (tool.name === 'delete_file') {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'tool_progress',
+                    tool: tool.name,
+                    message: `🗑️ Deleting: ${tool.input.path}`
+                  })}\n\n`))
+                } else if (tool.name === 'list_files') {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                    type: 'tool_progress',
+                    tool: tool.name,
+                    message: `📂 Listing files in: ${tool.input.path || 'current directory'}`
+                  })}\n\n`))
+                }
+
                 const result = await executeToolCall(tool, tenantId, userId)
+                const executionTime = Date.now() - startTime
                 
                 // Log tool execution
                 await supabase
                   .from('ai_tool_executions')
                   .insert({
                     session_id: currentSessionId,
-                    message_id: null, // We'll update this after saving the message
+                    message_id: null,
                     tool_name: tool.name,
                     tool_input: tool.input,
                     tool_output: result,
                     success: true,
+                    execution_time_ms: executionTime,
                   })
 
-                // Send tool result to client
+                // Send detailed tool result
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                   type: 'tool_result', 
-                  tool: tool.name, 
-                  result 
+                  tool: tool.name,
+                  status: 'completed',
+                  result,
+                  executionTime,
+                  message: `✅ ${tool.name} completed in ${executionTime}ms`
                 })}\n\n`))
               } catch (error) {
+                const executionTime = Date.now() - startTime
                 logger.error('Tool execution error:', error)
                 
                 // Log failed tool execution
@@ -208,7 +285,17 @@ export async function POST(request: NextRequest) {
                     tool_input: tool.input,
                     success: false,
                     error_message: error instanceof Error ? error.message : 'Unknown error',
+                    execution_time_ms: executionTime,
                   })
+
+                // Send detailed error
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                  type: 'tool_error',
+                  tool: tool.name,
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                  suggestion: getErrorSuggestion(tool.name, error),
+                  executionTime
+                })}\n\n`))
               }
             }
           }

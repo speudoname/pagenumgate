@@ -12,12 +12,23 @@ interface AIChatProps {
   onClose?: () => void
 }
 
+interface ToolCall {
+  name: string
+  input: any
+  status: 'pending' | 'running' | 'completed' | 'failed'
+  result?: any
+  error?: string
+  startTime?: Date
+  endTime?: Date
+}
+
 interface Message {
   id: string
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant' | 'system' | 'status'
   content: string
-  tools_called?: any[]
+  tools_called?: ToolCall[]
   timestamp: Date
+  status?: 'thinking' | 'processing' | 'complete' | 'error'
 }
 
 interface ChatSession {
@@ -75,6 +86,24 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
     }
   }
 
+  const addStatusMessage = (content: string, status?: Message['status']) => {
+    const statusMessage: Message = {
+      id: `status-${Date.now()}`,
+      role: 'status',
+      content,
+      timestamp: new Date(),
+      status: status || 'processing'
+    }
+    setMessages(prev => [...prev, statusMessage])
+    return statusMessage.id
+  }
+
+  const updateStatusMessage = (id: string, content: string, status?: Message['status']) => {
+    setMessages(prev => prev.map(msg => 
+      msg.id === id ? { ...msg, content, status } : msg
+    ))
+  }
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
 
@@ -90,8 +119,15 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
     setIsLoading(true)
     setIsStreaming(true)
 
+    // Add initial status message
+    const statusId = addStatusMessage('🤔 Thinking about your request...', 'thinking')
+
     try {
       abortControllerRef.current = new AbortController()
+      
+      // Update status with more detail
+      setTimeout(() => updateStatusMessage(statusId, '🔍 Analyzing context and available tools...', 'processing'), 500)
+      setTimeout(() => updateStatusMessage(statusId, '📡 Connecting to Claude AI...', 'processing'), 1000)
       
       const response = await fetch(getApiUrl('/api/ai/chat'), {
         method: 'POST',
@@ -117,6 +153,9 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
         throw new Error('No response body')
       }
 
+      // Remove status message before showing assistant response
+      setMessages(prev => prev.filter(msg => msg.id !== statusId))
+
       // Handle streaming response
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -124,7 +163,9 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
         id: Date.now().toString(),
         role: 'assistant',
         content: '',
-        timestamp: new Date()
+        timestamp: new Date(),
+        status: 'processing',
+        tools_called: []
       }
 
       setMessages(prev => [...prev, assistantMessage])
@@ -143,20 +184,82 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
               
               if (data.type === 'content') {
                 assistantMessage.content += data.content
+                assistantMessage.status = 'processing'
                 setMessages(prev => {
                   const newMessages = [...prev]
                   newMessages[newMessages.length - 1] = { ...assistantMessage }
                   return newMessages
                 })
               } else if (data.type === 'tool_use') {
-                if (!assistantMessage.tools_called) {
-                  assistantMessage.tools_called = []
+                // Add tool execution status
+                const tool: ToolCall = {
+                  ...data.tool,
+                  status: 'pending',
+                  startTime: new Date()
                 }
-                assistantMessage.tools_called.push(data.tool)
+                assistantMessage.tools_called?.push(tool)
+                
+                // Update assistant message
+                setMessages(prev => {
+                  const newMessages = [...prev]
+                  const assistantIndex = newMessages.findIndex(m => m.id === assistantMessage.id)
+                  if (assistantIndex >= 0) {
+                    newMessages[assistantIndex] = { ...assistantMessage }
+                  }
+                  return newMessages
+                })
+              } else if (data.type === 'tool_status') {
+                // New detailed tool status from API
+                const statusText = data.message || `🔧 ${data.tool}: ${data.status}`
+                if (data.status === 'starting') {
+                  addStatusMessage(statusText, 'processing')
+                } else if (data.status === 'completed') {
+                  addStatusMessage(`${statusText}\n⏱️ ${data.executionTime}ms`, 'complete')
+                }
+              } else if (data.type === 'tool_progress') {
+                // Tool progress updates
+                addStatusMessage(data.message, 'processing')
+              } else if (data.type === 'tool_error') {
+                // Tool error with suggestions
+                addStatusMessage(
+                  `❌ ${data.tool} failed: ${data.error}\n${data.suggestion}\n⏱️ ${data.executionTime}ms`,
+                  'error'
+                )
+              } else if (data.type === 'tool_result') {
+                // Update tool status
+                const toolIndex = assistantMessage.tools_called?.findIndex(t => t.name === data.tool)
+                if (toolIndex !== undefined && toolIndex >= 0 && assistantMessage.tools_called) {
+                  assistantMessage.tools_called[toolIndex].status = data.status === 'completed' ? 'completed' : 'failed'
+                  assistantMessage.tools_called[toolIndex].result = data.result
+                  assistantMessage.tools_called[toolIndex].endTime = new Date()
+                }
+                
+                // Show detailed result if available
+                if (data.result && typeof data.result === 'object') {
+                  if (data.result.filesCreated || data.result.filesModified || data.result.filesDeleted) {
+                    let resultMsg = '📊 Operation Summary:\n'
+                    if (data.result.filesCreated) resultMsg += `  • Created: ${data.result.filesCreated}\n`
+                    if (data.result.filesModified) resultMsg += `  • Modified: ${data.result.filesModified}\n`
+                    if (data.result.filesDeleted) resultMsg += `  • Deleted: ${data.result.filesDeleted}\n`
+                    addStatusMessage(resultMsg, 'complete')
+                  }
+                }
               } else if (data.type === 'session') {
                 setSessionId(data.sessionId)
               } else if (data.type === 'done') {
                 // Stream completed
+                assistantMessage.status = 'complete'
+                setMessages(prev => {
+                  const newMessages = [...prev]
+                  const assistantIndex = newMessages.findIndex(m => m.id === assistantMessage.id)
+                  if (assistantIndex >= 0) {
+                    newMessages[assistantIndex] = { ...assistantMessage }
+                  }
+                  return newMessages
+                })
+              } else if (data.type === 'error') {
+                assistantMessage.status = 'error'
+                addStatusMessage(`❌ Error: ${data.error}`, 'error')
               }
             } catch (e) {
               // Ignore parsing errors for incomplete chunks
@@ -284,61 +387,126 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
           </div>
         )}
         
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
+        {messages.map((message) => {
+          // Render status messages differently
+          if (message.role === 'status') {
+            return (
+              <div key={message.id} className="flex justify-center my-2 animate-fadeIn">
+                <div className={`inline-flex items-start gap-2 px-4 py-2 rounded-lg text-sm max-w-md ${
+                  message.status === 'thinking' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                  message.status === 'processing' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                  message.status === 'complete' ? 'bg-green-50 text-green-700 border border-green-200' :
+                  message.status === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
+                  'bg-gray-50 text-gray-700 border border-gray-200'
+                }`}>
+                  <span className="flex-shrink-0 mt-0.5">
+                    {message.status === 'thinking' && <span className="animate-pulse">🤔</span>}
+                    {message.status === 'processing' && <span className="animate-spin inline-block">⚙️</span>}
+                    {message.status === 'complete' && <span>✅</span>}
+                    {message.status === 'error' && <span>❌</span>}
+                  </span>
+                  <span className="whitespace-pre-wrap break-words">{message.content}</span>
+                </div>
+              </div>
+            )
+          }
+
+          return (
             <div
-              className={`max-w-[80%] rounded-lg p-3 ${
-                message.role === 'user'
-                  ? 'bg-blue-500 text-white'
-                  : message.role === 'system'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-gray-100 text-gray-900'
-              }`}
+              key={message.id}
+              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {message.role === 'assistant' ? (
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      code: ({ className, children, ...props }: any) => {
-                        const match = /language-(\w+)/.exec(className || '')
-                        return match ? (
-                          <pre className="bg-gray-800 text-gray-100 p-2 rounded overflow-x-auto">
-                            <code className={className} {...props}>
+              <div
+                className={`max-w-[80%] rounded-lg p-3 ${
+                  message.role === 'user'
+                    ? 'bg-blue-500 text-white'
+                    : message.role === 'system'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-gray-100 text-gray-900'
+                } ${message.status === 'processing' ? 'opacity-70' : ''}`}
+              >
+                {/* Show processing indicator for assistant messages */}
+                {message.role === 'assistant' && message.status === 'processing' && (
+                  <div className="flex items-center gap-2 mb-2 text-xs text-gray-600">
+                    <span className="animate-pulse">✍️ Writing response...</span>
+                  </div>
+                )}
+
+                {message.role === 'assistant' ? (
+                  <div className="prose prose-sm max-w-none">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code: ({ className, children, ...props }: any) => {
+                          const match = /language-(\w+)/.exec(className || '')
+                          return match ? (
+                            <pre className="bg-gray-800 text-gray-100 p-2 rounded overflow-x-auto">
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            </pre>
+                          ) : (
+                            <code className="bg-gray-200 px-1 rounded" {...props}>
                               {children}
                             </code>
-                          </pre>
-                        ) : (
-                          <code className="bg-gray-200 px-1 rounded" {...props}>
-                            {children}
-                          </code>
-                        )
-                      }
-                    }}
-                  >
-                    {message.content}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <div className="whitespace-pre-wrap">{message.content}</div>
-              )}
-              
-              {message.tools_called && message.tools_called.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-gray-300 text-xs">
-                  <div className="font-semibold mb-1">Tools used:</div>
-                  {message.tools_called.map((tool, idx) => (
-                    <div key={idx} className="ml-2">
-                      • {tool.name}
-                    </div>
-                  ))}
-                </div>
-              )}
+                          )
+                        }
+                      }}
+                    >
+                      {message.content || '...'}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                )}
+                
+                {/* Enhanced tool display */}
+                {message.tools_called && message.tools_called.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-300">
+                    <div className="font-semibold text-xs mb-2">🛠️ Tools Executed:</div>
+                    {message.tools_called.map((tool, idx) => (
+                      <div key={idx} className="ml-2 mb-2 p-2 bg-white bg-opacity-50 rounded text-xs">
+                        <div className="flex items-center gap-2">
+                          {tool.status === 'pending' && <span className="animate-pulse">⏳</span>}
+                          {tool.status === 'running' && <span className="animate-spin">⚙️</span>}
+                          {tool.status === 'completed' && <span>✅</span>}
+                          {tool.status === 'failed' && <span>❌</span>}
+                          <span className="font-medium">{tool.name}</span>
+                        </div>
+                        {tool.input && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer text-gray-600">Parameters</summary>
+                            <pre className="mt-1 p-1 bg-gray-50 rounded overflow-x-auto text-xs">
+                              {JSON.stringify(tool.input, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                        {tool.result && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer text-gray-600">Result</summary>
+                            <pre className="mt-1 p-1 bg-green-50 rounded overflow-x-auto text-xs">
+                              {JSON.stringify(tool.result, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                        {tool.error && (
+                          <div className="mt-1 p-1 bg-red-50 rounded text-red-600">
+                            Error: {tool.error}
+                          </div>
+                        )}
+                        {tool.startTime && tool.endTime && (
+                          <div className="mt-1 text-gray-500">
+                            Duration: {(tool.endTime.getTime() - tool.startTime.getTime())}ms
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         
         {isStreaming && (
           <div className="flex justify-start">

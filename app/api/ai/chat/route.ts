@@ -279,10 +279,20 @@ Respond ONLY with valid JSON in this format:
 }
 
 CRITICAL RULES FOR PARAMETERS:
-- For create_file: MUST include both path (with filename) and content
-- For edit_file: MUST first read_file, then provide COMPLETE new content
-- For delete_file: MUST include the full path to the file
-- Default to contextPath: "${contextPath || '/'}" for all operations
+${contextType === 'file' ? `
+- YOU ARE EDITING THE SELECTED FILE: "${contextPath}"
+- For read_file: use path: "${contextPath}"
+- For edit_file: use path: "${contextPath}" and provide COMPLETE new content
+- DO NOT search for files - use the SELECTED FILE: "${contextPath}"
+` : contextType === 'folder' ? `
+- YOU ARE IN THE FOLDER: "${contextPath}"
+- For create_file: use path: "${contextPath}/filename.html"
+- For list_files: use path: "${contextPath}"
+` : `
+- No specific file/folder selected - use full paths
+`}
+- NEVER use double slashes (//) in paths
+- NEVER include tenant ID in paths
 - When editing: ALWAYS read first, modify content, then edit with FULL content`,
             messages: [...messages, { role: 'user' as const, content: `Generate an action plan for: ${message}` }] as any,
             tools: [], // No tools in planning phase
@@ -412,6 +422,11 @@ CRITICAL RULES FOR PARAMETERS:
                       // Relative path - prepend context
                       enhancedInput.path = `${contextPath}/${enhancedInput.path}`
                     }
+                  }
+                  
+                  // Clean up double slashes (but keep single leading slash)
+                  if (enhancedInput.path) {
+                    enhancedInput.path = enhancedInput.path.replace(/\/+/g, '/').replace(/^\//g, '')
                   }
                 }
                 

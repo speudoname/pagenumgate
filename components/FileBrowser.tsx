@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { getApiUrl } from '@/lib/utils/api'
 import FileContextMenu from './FileContextMenu'
 import FileModal from './FileModal'
@@ -21,10 +21,14 @@ interface FileBrowserProps {
   onOpenAIChat?: (type: 'file' | 'folder', path: string) => void
 }
 
+export interface FileBrowserRef {
+  refreshFiles: () => Promise<void>
+}
+
 type SortBy = 'name' | 'size' | 'date' | 'type'
 type SortOrder = 'asc' | 'desc'
 
-export default function FileBrowser({ onFileSelect, selectedFile, onOpenAIChat }: FileBrowserProps) {
+const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(({ onFileSelect, selectedFile, onOpenAIChat }, ref) => {
   const [files, setFiles] = useState<FileNode | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -47,10 +51,6 @@ export default function FileBrowser({ onFileSelect, selectedFile, onOpenAIChat }
     node?: FileNode
   }>({ type: null })
 
-  useEffect(() => {
-    loadFiles()
-  }, [])
-
   const loadFiles = async () => {
     try {
       setLoading(true)
@@ -72,6 +72,14 @@ export default function FileBrowser({ onFileSelect, selectedFile, onOpenAIChat }
     }
   }
 
+  useEffect(() => {
+    loadFiles()
+  }, [])
+
+  // Expose loadFiles method via ref
+  useImperativeHandle(ref, () => ({
+    refreshFiles: loadFiles
+  }), [])
 
   const handleContextMenu = (e: React.MouseEvent, node?: FileNode, isRoot?: boolean) => {
     e.preventDefault()
@@ -694,4 +702,8 @@ console.log('Hello from ${fileName}!');`
       )}
     </>
   )
-}
+})
+
+FileBrowser.displayName = 'FileBrowser'
+
+export default FileBrowser

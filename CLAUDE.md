@@ -195,11 +195,18 @@ blob-storage/
 - **Access**: Read-only for all tenants, managed centrally
 - **Usage**: Referenced in tenant pages via CDN URLs
 
+### Deployment Strategy
+- **NEVER deploy directly to Vercel** - Always push to GitHub
+- GitHub is connected to Vercel for automatic deployments
+- Workflow: Make changes → Commit → Push to GitHub → Vercel auto-deploys
+- This ensures version control and consistent deployment pipeline
+
 ### Development Guidelines
 1. **Check NUM Gate first** before changing shared configs
 2. **Test with gateway** after major changes
 3. **Maintain consistent UI** with NUM Gate design system
 4. **Follow RLS policies** from main project
+5. **Test locally on http://localhost:3001** before pushing
 
 ### File Structure in Blob
 ```

@@ -10,6 +10,7 @@ interface AIChatProps {
   contextPath: string
   tenantId: string
   onClose?: () => void
+  onFilesChanged?: () => void
 }
 
 interface ToolCall {
@@ -36,7 +37,7 @@ interface ChatSession {
   messages: Message[]
 }
 
-export default function AIChat({ contextType, contextPath, tenantId, onClose }: AIChatProps) {
+export default function AIChat({ contextType, contextPath, tenantId, onClose, onFilesChanged }: AIChatProps) {
   // Store sessions per context in a map
   const [sessions, setSessions] = useState<Map<string, { 
     sessionId: string | null, 
@@ -276,6 +277,11 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
                     if (data.result.filesModified) resultMsg += `  • Modified: ${data.result.filesModified}\n`
                     if (data.result.filesDeleted) resultMsg += `  • Deleted: ${data.result.filesDeleted}\n`
                     addStatusMessage(resultMsg, 'complete')
+                    
+                    // Trigger file browser refresh when AI modifies files
+                    if (onFilesChanged) {
+                      onFilesChanged()
+                    }
                   }
                 }
               } else if (data.type === 'session') {
@@ -377,7 +383,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
   }
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden" style={{ maxHeight: '100vh' }}>
+    <div className="flex flex-col bg-white overflow-hidden" style={{ height: '600px' }}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div>

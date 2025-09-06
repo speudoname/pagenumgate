@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import FileBrowser from '@/components/FileBrowser'
+import { useEffect, useState, useRef } from 'react'
+import FileBrowser, { FileBrowserRef } from '@/components/FileBrowser'
 import FileEditor from '@/components/FileEditor'
 import AIChat from '@/components/AIChat'
 import { getApiUrl } from '@/lib/utils/api'
@@ -28,6 +28,7 @@ export default function PageBuilderDashboard() {
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null)
   const [showAIChat, setShowAIChat] = useState(false)
   const [aiChatContext, setAIChatContext] = useState<{ type: 'file' | 'folder', path: string } | null>(null)
+  const fileBrowserRef = useRef<FileBrowserRef>(null)
 
   useEffect(() => {
     async function loadUser() {
@@ -79,6 +80,13 @@ export default function PageBuilderDashboard() {
     setShowAIChat(true)
   }
 
+  const handleFilesChanged = async () => {
+    // Refresh the file browser when AI makes changes
+    if (fileBrowserRef.current) {
+      await fileBrowserRef.current.refreshFiles()
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -122,6 +130,7 @@ export default function PageBuilderDashboard() {
             <p className="text-xs text-gray-500 mt-1">Your tenant workspace</p>
           </div>
           <FileBrowser 
+            ref={fileBrowserRef}
             onFileSelect={setSelectedFile}
             selectedFile={selectedFile}
             onOpenAIChat={openAIChat}
@@ -138,12 +147,13 @@ export default function PageBuilderDashboard() {
 
         {/* Right Sidebar - AI Chat (when open) */}
         {showAIChat && aiChatContext && (
-          <div className="w-96 h-full border-l border-gray-200">
+          <div className="w-96 border-l border-gray-200">
             <AIChat
               contextType={aiChatContext.type}
               contextPath={aiChatContext.path}
               tenantId={user.tenant_id}
               onClose={() => setShowAIChat(false)}
+              onFilesChanged={handleFilesChanged}
             />
           </div>
         )}

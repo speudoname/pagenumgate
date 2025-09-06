@@ -228,6 +228,8 @@ export async function executeToolCall(
           const blob = await put(fullPath, content, {
             access: 'public',
             contentType,
+            addRandomSuffix: false,
+            allowOverwrite: true,  // Allow overwriting existing files
           })
           
           logger.log(`Blob PUT successful! URL: ${blob.url}`)
@@ -257,6 +259,8 @@ export async function executeToolCall(
         const blob = await put(fullPath, content, {
           access: 'public',
           contentType,
+          addRandomSuffix: false,
+          allowOverwrite: true,  // Allow overwriting for edits
         })
         
         return {
@@ -388,6 +392,8 @@ export async function executeToolCall(
         await put(toPath, content, {
           access: 'public',
           contentType,
+          addRandomSuffix: false,
+          allowOverwrite: true,  // Allow overwriting if destination exists
         })
         
         // Delete original

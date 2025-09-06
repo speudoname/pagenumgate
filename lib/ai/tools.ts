@@ -1,11 +1,12 @@
 import { put, del, list } from '@vercel/blob'
 import { logger } from '@/lib/utils/logger'
+import { domTools, executeDomTool } from './tools/dom-tools'
 
 interface Tool {
   name: string
   description: string
   input_schema: {
-    type: 'object'
+    type: string
     properties: Record<string, any>
     required: string[]
   }
@@ -14,7 +15,8 @@ interface Tool {
 export function getTools(contextType: string, contextPath: string, tenantId: string): Tool[] {
   const basePath = contextType === 'folder' ? contextPath : contextPath.substring(0, contextPath.lastIndexOf('/'))
   
-  return [
+  // Combine file tools with DOM tools
+  const fileTools = [
     {
       name: 'create_file',
       description: 'Create a new file with content',
@@ -131,6 +133,11 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
       }
     }
   ]
+  
+  // Add DOM tools for HTML file editing
+  const allTools = [...fileTools, ...domTools]
+  
+  return allTools
 }
 
 export async function executeToolCall(
@@ -318,6 +325,21 @@ export async function executeToolCall(
       }
 
       default:
+        // Check if it's a DOM tool
+        const domToolNames = [
+          'update_section',
+          'get_preview_state',
+          'find_element',
+          'update_element',
+          'add_element',
+          'remove_element',
+          'inspect_element'
+        ]
+        
+        if (domToolNames.includes(tool.name)) {
+          return await executeDomTool(tool.name, tool.input, tenantId)
+        }
+        
         throw new Error(`Unknown tool: ${tool.name}`)
     }
   } catch (error) {

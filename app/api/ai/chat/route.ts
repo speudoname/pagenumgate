@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
             model: selectedModel,
             max_tokens: 4096,
             messages: messages as any,
-            tools: tools,
+            tools: tools as any, // Cast to any since our Tool interface is compatible
             stream: true,
           })
 

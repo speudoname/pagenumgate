@@ -1,6 +1,8 @@
 import { put, del, list } from '@vercel/blob'
 import { logger } from '@/lib/utils/logger'
 import { domTools, executeDomTool } from './tools/dom-tools'
+import { pageTools, executePageTool } from './tools/page-tools'
+import { businessTools, executeBusinessTool } from './tools/business-tools'
 
 interface Tool {
   name: string
@@ -134,8 +136,8 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
     }
   ]
   
-  // Add DOM tools for HTML file editing
-  const allTools = [...fileTools, ...domTools]
+  // Combine all tools: file operations, DOM manipulation, page building, and business integrations
+  const allTools = [...fileTools, ...domTools, ...pageTools, ...businessTools]
   
   return allTools
 }
@@ -338,6 +340,33 @@ export async function executeToolCall(
         
         if (domToolNames.includes(tool.name)) {
           return await executeDomTool(tool.name, tool.input, tenantId)
+        }
+        
+        // Check if it's a page building tool
+        const pageToolNames = [
+          'add_section',
+          'apply_theme',
+          'update_layout',
+          'optimize_seo',
+          'add_component'
+        ]
+        
+        if (pageToolNames.includes(tool.name)) {
+          return await executePageTool(tool.name, tool.input, tenantId)
+        }
+        
+        // Check if it's a business tool
+        const businessToolNames = [
+          'add_webinar_registration',
+          'add_payment_form',
+          'add_lms_course_card',
+          'add_testimonial_section',
+          'add_opt_in_form',
+          'add_product_showcase'
+        ]
+        
+        if (businessToolNames.includes(tool.name)) {
+          return await executeBusinessTool(tool.name, tool.input, tenantId)
         }
         
         throw new Error(`Unknown tool: ${tool.name}`)

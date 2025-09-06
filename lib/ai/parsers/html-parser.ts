@@ -12,7 +12,7 @@ export interface PageSection {
 
 export class HTMLParser {
   private dom: JSDOM
-  private document: Document
+  public document: Document
 
   constructor(html: string) {
     this.dom = new JSDOM(html)

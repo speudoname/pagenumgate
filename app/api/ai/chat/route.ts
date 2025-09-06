@@ -117,18 +117,17 @@ export async function POST(request: NextRequest) {
         content: message,
       })
 
-    // Prepare messages for Claude
+    // Prepare system prompt
+    const systemPrompt = `You are an AI assistant helping with file and folder management. 
+    Current context: ${contextType} at path "${contextPath}".
+    Tenant ID: ${tenantId}
+    
+    You have access to tools for file operations. Use them when appropriate.
+    Be concise and helpful. When creating or editing files, ensure proper formatting.`
+    
+    // Prepare messages for Claude (no system role in messages)
     const messages = [
-      {
-        role: 'system' as const,
-        content: `You are an AI assistant helping with file and folder management. 
-        Current context: ${contextType} at path "${contextPath}".
-        Tenant ID: ${tenantId}
-        
-        You have access to tools for file operations. Use them when appropriate.
-        Be concise and helpful. When creating or editing files, ensure proper formatting.`
-      },
-      ...(history || []).map((msg: any) => ({
+      ...(history || []).filter((msg: any) => msg.role !== 'system').map((msg: any) => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content
       })),
@@ -165,6 +164,7 @@ export async function POST(request: NextRequest) {
           const response = await anthropic.messages.create({
             model: selectedModel,
             max_tokens: 4096,
+            system: systemPrompt, // Pass system as a parameter, not in messages
             messages: messages as any,
             tools: tools as any, // Cast to any since our Tool interface is compatible
             stream: true,

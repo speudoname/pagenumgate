@@ -24,6 +24,7 @@ export default function FileEditor({ file, onOpenAIChat }: FileEditorProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState(Date.now())
 
   useEffect(() => {
     if (file && file.type === 'file') {
@@ -33,6 +34,20 @@ export default function FileEditor({ file, onOpenAIChat }: FileEditorProps) {
       setOriginalContent('')
     }
   }, [file])
+  
+  // Refresh content periodically to catch external changes (from AI)
+  useEffect(() => {
+    if (!file || file.type !== 'file') return
+    
+    const interval = setInterval(() => {
+      // Only refresh if not currently editing (no unsaved changes)
+      if (content === originalContent) {
+        loadFileContent()
+      }
+    }, 2000) // Check every 2 seconds
+    
+    return () => clearInterval(interval)
+  }, [file, content, originalContent])
 
   const loadFileContent = async () => {
     if (!file || !file.url) return

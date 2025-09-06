@@ -281,19 +281,20 @@ Respond ONLY with valid JSON in this format:
 CRITICAL RULES FOR PARAMETERS:
 ${contextType === 'file' ? `
 - YOU ARE EDITING THE SELECTED FILE: "${contextPath}"
-- For read_file: use path: "${contextPath}"
-- For edit_file: use path: "${contextPath}" and provide COMPLETE new content
-- DO NOT search for files - use the SELECTED FILE: "${contextPath}"
+- Step 1: read_file with path: "${contextPath}"
+- Step 2: edit_file with path: "${contextPath}" and content: THE ACTUAL MODIFIED HTML
+- NEVER use placeholder text like "[Will be determined...]"
+- The content parameter MUST be the COMPLETE HTML with your changes applied
 ` : contextType === 'folder' ? `
 - YOU ARE IN THE FOLDER: "${contextPath}"
-- For create_file: use path: "${contextPath}/filename.html"
+- For create_file: use path: "${contextPath}/filename.html" and content: COMPLETE HTML
 - For list_files: use path: "${contextPath}"
 ` : `
 - No specific file/folder selected - use full paths
 `}
-- NEVER use double slashes (//) in paths
-- NEVER include tenant ID in paths
-- When editing: ALWAYS read first, modify content, then edit with FULL content`,
+- NEVER use placeholder text in content field
+- content MUST be the ACTUAL HTML/text, not descriptions
+- When editing: First read, then provide COMPLETE modified content`,
             messages: [...messages, { role: 'user' as const, content: `Generate an action plan for: ${message}` }] as any,
             tools: [], // No tools in planning phase
           })

@@ -296,4 +296,51 @@ export class HTMLParser {
       attributes
     }
   }
+
+  /**
+   * Apply aggressive highlighting to elements
+   */
+  highlightElements(selector: string, styles: string, animationStyles: string): boolean {
+    try {
+      const elements = this.document.querySelectorAll(selector)
+      if (elements.length === 0) return false
+      
+      // Add animation styles to head if not already present
+      let styleTag = this.document.getElementById('highlight-animations')
+      if (!styleTag) {
+        styleTag = this.document.createElement('style')
+        styleTag.id = 'highlight-animations'
+        styleTag.textContent = animationStyles
+        
+        const head = this.document.head || this.document.querySelector('head')
+        if (head) {
+          head.appendChild(styleTag)
+        } else {
+          // If no head, add to body
+          this.document.body.insertBefore(styleTag, this.document.body.firstChild)
+        }
+      }
+      
+      // Apply inline styles to each element
+      elements.forEach(element => {
+        if (element instanceof HTMLElement) {
+          // Store original style as data attribute if not already stored
+          if (!element.hasAttribute('data-original-style')) {
+            element.setAttribute('data-original-style', element.getAttribute('style') || '')
+          }
+          
+          // Apply the aggressive highlighting styles
+          element.setAttribute('style', styles)
+          
+          // Add a special class for tracking
+          element.classList.add('ai-highlighted')
+        }
+      })
+      
+      return true
+    } catch (error) {
+      console.error('Error highlighting elements:', error)
+      return false
+    }
+  }
 }

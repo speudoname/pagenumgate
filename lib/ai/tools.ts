@@ -444,7 +444,8 @@ export async function executeToolCall(
           'update_element',
           'add_element',
           'remove_element',
-          'inspect_element'
+          'inspect_element',
+          'highlight_text'
         ]
         
         if (domToolNames.includes(tool.name)) {

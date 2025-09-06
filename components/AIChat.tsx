@@ -269,6 +269,25 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
                   assistantMessage.tools_called[toolIndex].endTime = new Date()
                 }
                 
+                // Show completion status message
+                if (data.message) {
+                  addStatusMessage(data.message, data.status === 'completed' ? 'complete' : 'error')
+                }
+                
+                // Trigger file browser refresh for ANY successful file operation
+                if (data.status === 'completed' && onFilesChanged) {
+                  const fileOperationTools = [
+                    'create_file', 'edit_file', 'delete_file', 'move_file', 'create_folder',
+                    // Include page/DOM tools that modify files
+                    'add_section', 'apply_theme', 'update_layout', 'optimize_seo', 'add_component',
+                    'update_section', 'update_element', 'add_element', 'remove_element'
+                  ]
+                  
+                  if (fileOperationTools.includes(data.tool)) {
+                    onFilesChanged()
+                  }
+                }
+                
                 // Show detailed result if available
                 if (data.result && typeof data.result === 'object') {
                   if (data.result.filesCreated || data.result.filesModified || data.result.filesDeleted) {
@@ -277,11 +296,6 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
                     if (data.result.filesModified) resultMsg += `  • Modified: ${data.result.filesModified}\n`
                     if (data.result.filesDeleted) resultMsg += `  • Deleted: ${data.result.filesDeleted}\n`
                     addStatusMessage(resultMsg, 'complete')
-                    
-                    // Trigger file browser refresh when AI modifies files
-                    if (onFilesChanged) {
-                      onFilesChanged()
-                    }
                   }
                 }
               } else if (data.type === 'session') {

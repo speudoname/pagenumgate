@@ -17,6 +17,9 @@ interface Tool {
 export function getTools(contextType: string, contextPath: string, tenantId: string): Tool[] {
   const basePath = contextType === 'folder' ? contextPath : contextPath.substring(0, contextPath.lastIndexOf('/'))
   
+  // Store context info for tools to use
+  (global as any).__TOOL_CONTEXT = { contextType, contextPath, basePath, tenantId }
+  
   // Combine file tools with DOM tools
   const fileTools = [
     {
@@ -153,6 +156,33 @@ export async function executeToolCall(
   logger.log(`Tenant: ${tenantId}`)
   logger.log(`User: ${userId}`)
   
+  // Get context info set by getTools
+  const context = (global as any).__TOOL_CONTEXT || {}
+  logger.log(`Context:`, context)
+  
+  // Resolve path with context awareness
+  const resolvePathWithContext = (inputPath: string) => {
+    if (!inputPath) {
+      throw new Error('Path is required')
+    }
+    
+    let resolvedPath = inputPath
+    
+    // If we're in folder context and path doesn't start with that folder, prefix it
+    if (context.contextType === 'folder' && context.contextPath) {
+      // If path is just a filename (no / in it) or doesn't start with context path
+      if (!inputPath.includes('/') || !inputPath.startsWith(context.contextPath)) {
+        // Don't double-prefix if already includes context path
+        if (!inputPath.startsWith(context.contextPath)) {
+          resolvedPath = `${context.contextPath}/${inputPath}`
+        }
+      }
+    }
+    
+    logger.log(`Path resolution: "${inputPath}" → "${resolvedPath}"`)
+    return resolvedPath
+  }
+  
   // Ensure all paths are within tenant's directory
   const sanitizePath = (path: string) => {
     // Remove leading slash if present
@@ -168,7 +198,8 @@ export async function executeToolCall(
     switch (tool.name) {
       case 'create_file': {
         const { path, content, fileType } = tool.input
-        const fullPath = sanitizePath(path)
+        const resolvedPath = resolvePathWithContext(path)
+        const fullPath = sanitizePath(resolvedPath)
         
         // Determine content type based on file extension or fileType
         const ext = path.split('.').pop() || fileType || 'txt'
@@ -189,7 +220,7 @@ export async function executeToolCall(
           
           return {
             success: true,
-            message: `File created at ${path}`,
+            message: `File created at ${resolvedPath}`,
             url: blob.url
           }
         } catch (blobError) {
@@ -201,7 +232,8 @@ export async function executeToolCall(
 
       case 'edit_file': {
         const { path, content } = tool.input
-        const fullPath = sanitizePath(path)
+        const resolvedPath = resolvePathWithContext(path)
+        const fullPath = sanitizePath(resolvedPath)
         
         // Get file extension to determine content type
         const ext = path.split('.').pop() || 'txt'
@@ -215,27 +247,29 @@ export async function executeToolCall(
         
         return {
           success: true,
-          message: `File updated at ${path}`,
+          message: `File updated at ${resolvedPath}`,
           url: blob.url
         }
       }
 
       case 'delete_file': {
         const { path } = tool.input
-        const fullPath = sanitizePath(path)
+        const resolvedPath = resolvePathWithContext(path)
+        const fullPath = sanitizePath(resolvedPath)
         
         // Delete from blob storage
         await del(fullPath)
         
         return {
           success: true,
-          message: `Deleted ${path}`
+          message: `Deleted ${resolvedPath}`
         }
       }
 
       case 'read_file': {
         const { path } = tool.input
-        const fullPath = sanitizePath(path)
+        const resolvedPath = resolvePathWithContext(path)
+        const fullPath = sanitizePath(resolvedPath)
         
         // Fetch from blob storage using the Vercel Blob API
         const { blobs } = await list({
@@ -244,12 +278,12 @@ export async function executeToolCall(
         })
         
         if (blobs.length === 0) {
-          throw new Error(`File not found: ${path}`)
+          throw new Error(`File not found: ${resolvedPath}`)
         }
         
         const response = await fetch(blobs[0].url)
         if (!response.ok) {
-          throw new Error(`File not found: ${path}`)
+          throw new Error(`File not found: ${resolvedPath}`)
         }
         
         const content = await response.text()
@@ -257,13 +291,18 @@ export async function executeToolCall(
         return {
           success: true,
           content,
-          path
+          path: resolvedPath
         }
       }
 
       case 'list_files': {
         const { path = '' } = tool.input
-        const prefix = path ? sanitizePath(path) : `${tenantId}/`
+        // If no path provided and we're in folder context, use context folder
+        let listPath = path
+        if (!path && context.contextType === 'folder' && context.contextPath) {
+          listPath = context.contextPath
+        }
+        const prefix = listPath ? sanitizePath(listPath) : `${tenantId}/`
         
         // List blobs with prefix
         const { blobs } = await list({
@@ -288,7 +327,8 @@ export async function executeToolCall(
 
       case 'create_folder': {
         const { path } = tool.input
-        const fullPath = sanitizePath(path)
+        const resolvedPath = resolvePathWithContext(path)
+        const fullPath = sanitizePath(resolvedPath)
         
         // Create a placeholder file in the folder
         const placeholderPath = `${fullPath}/.placeholder`
@@ -299,14 +339,16 @@ export async function executeToolCall(
         
         return {
           success: true,
-          message: `Folder created at ${path}`
+          message: `Folder created at ${resolvedPath}`
         }
       }
 
       case 'move_file': {
         const { from, to } = tool.input
-        const fromPath = sanitizePath(from)
-        const toPath = sanitizePath(to)
+        const resolvedFrom = resolvePathWithContext(from)
+        const resolvedTo = resolvePathWithContext(to)
+        const fromPath = sanitizePath(resolvedFrom)
+        const toPath = sanitizePath(resolvedTo)
         
         // Fetch the original file using Vercel Blob API
         const { blobs } = await list({
@@ -315,12 +357,12 @@ export async function executeToolCall(
         })
         
         if (blobs.length === 0) {
-          throw new Error(`Source file not found: ${from}`)
+          throw new Error(`Source file not found: ${resolvedFrom}`)
         }
         
         const response = await fetch(blobs[0].url)
         if (!response.ok) {
-          throw new Error(`Source file not found: ${from}`)
+          throw new Error(`Source file not found: ${resolvedFrom}`)
         }
         
         const content = await response.blob()
@@ -339,7 +381,7 @@ export async function executeToolCall(
         
         return {
           success: true,
-          message: `Moved ${from} to ${to}`
+          message: `Moved ${resolvedFrom} to ${resolvedTo}`
         }
       }
 

@@ -122,6 +122,21 @@ export async function POST(request: NextRequest) {
     Current context: ${contextType} at path "${contextPath}".
     Tenant ID: ${tenantId}
     
+    🎯 CRITICAL CONTEXT HANDLING:
+    ${contextType === 'folder' ? `
+    ⚠️ FOLDER CONTEXT MODE - ESSENTIAL RULES:
+    • DEFAULT LOCATION: ALL file operations must happen in "${contextPath}" folder
+    • When user says "create file X" → create "${contextPath}/X"
+    • When user says "make a page" → create in "${contextPath}/[name].html"
+    • When user says "list files" → list files in "${contextPath}"
+    • When user says "here" → refers to "${contextPath}" folder
+    • NEVER create files outside this folder unless explicitly requested with full path
+    • If user provides ONLY filename (no path), prepend "${contextPath}/"
+    • Example: "create contact page" → path should be "${contextPath}/contact.html"
+    ` : `
+    • Context: ${contextType === 'file' ? `Working on file: ${contextPath}` : 'Global context - working on tenant root'}
+    `}
+    
     🎯 CRITICAL TOOL USAGE INSTRUCTIONS:
     
     1. SMART PARAMETER EXTRACTION:
@@ -134,7 +149,7 @@ export async function POST(request: NextRequest) {
     2. CONTEXT AWARENESS:
        • Current file/folder is your default context
        • "this page" = current context path
-       • "here" = current directory
+       • "here" = current directory (${contextPath})
        • Remember previous actions in conversation
     
     3. INTELLIGENT DEFAULTS:

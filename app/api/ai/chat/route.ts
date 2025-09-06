@@ -195,7 +195,11 @@ When user asks to edit/change/update a file:
 ## Current Working Context
 - Type: ${contextType || 'none'}
 - Path: ${contextPath || 'root'}
-- Tenant: ${tenantId}
+
+CRITICAL PATH RULES:
+- NEVER include tenant ID in paths! The system handles it automatically
+- Use clean paths: "three.html", "folder/file.html", NOT "6da127c2.../three.html"
+- When you see a path with tenant ID, remove it before using
 
 REMEMBER: The user has selected ${contextType === 'file' ? `the file "${contextPath}"` : contextType === 'folder' ? `the folder "${contextPath}"` : 'no specific context'}. This is what they're referring to when they say "this", "it", "here", etc.`
     
@@ -379,6 +383,12 @@ CRITICAL RULES FOR PARAMETERS:
               if (contextPath && contextType) {
                 // For file operations, ensure path uses context
                 if (['create_file', 'edit_file', 'delete_file', 'read_file', 'list_files'].includes(step.tool)) {
+                  // IMPORTANT: Remove tenant ID if it's included in the path
+                  // The tenant ID is handled automatically by the tools
+                  if (enhancedInput.path && enhancedInput.path.includes(tenantId)) {
+                    enhancedInput.path = enhancedInput.path.replace(`${tenantId}/`, '')
+                  }
+                  
                   // For create_file, ensure we have a filename not just a folder
                   if (step.tool === 'create_file') {
                     if (!enhancedInput.path || enhancedInput.path === '/' || enhancedInput.path.endsWith('/')) {
@@ -406,7 +416,11 @@ CRITICAL RULES FOR PARAMETERS:
                 }
                 
                 // For DOM tools, ensure path uses context if it's a file
-                if (contextType === 'file' && step.tool.includes('element') || step.tool.includes('section')) {
+                if (contextType === 'file' && (step.tool.includes('element') || step.tool.includes('section'))) {
+                  // Remove tenant ID if present
+                  if (enhancedInput.path && enhancedInput.path.includes(tenantId)) {
+                    enhancedInput.path = enhancedInput.path.replace(`${tenantId}/`, '')
+                  }
                   if (!enhancedInput.path) {
                     enhancedInput.path = contextPath
                   }

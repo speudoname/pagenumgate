@@ -194,8 +194,9 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
       // Handle streaming response
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
+      const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${sessionId || 'nosession'}`
       let assistantMessage: Message = {
-        id: `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: assistantMessageId,
         role: 'assistant',
         content: '',
         timestamp: new Date(),
@@ -203,7 +204,13 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
         tools_called: []
       }
 
-      setMessages(prev => [...prev, assistantMessage])
+      setMessages(prev => {
+        // Check if message with this ID already exists
+        if (prev.some(msg => msg.id === assistantMessageId)) {
+          return prev
+        }
+        return [...prev, assistantMessage]
+      })
 
       while (true) {
         const { done, value } = await reader.read()
@@ -222,7 +229,10 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
                 assistantMessage.status = 'processing'
                 setMessages(prev => {
                   const newMessages = [...prev]
-                  newMessages[newMessages.length - 1] = { ...assistantMessage }
+                  const assistantIndex = newMessages.findIndex(m => m.id === assistantMessageId)
+                  if (assistantIndex >= 0) {
+                    newMessages[assistantIndex] = { ...assistantMessage }
+                  }
                   return newMessages
                 })
               } else if (data.type === 'action_plan') {

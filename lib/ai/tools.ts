@@ -15,10 +15,16 @@ interface Tool {
 }
 
 export function getTools(contextType: string, contextPath: string, tenantId: string): Tool[] {
-  const basePath = contextType === 'folder' ? contextPath : contextPath.substring(0, contextPath.lastIndexOf('/'))
+  // Handle null/undefined contextPath
+  const safePath = contextPath || '/'
+  const basePath = contextType === 'folder' 
+    ? safePath 
+    : safePath.includes('/') 
+      ? safePath.substring(0, safePath.lastIndexOf('/')) 
+      : '/'
   
   // Store context info for tools to use
-  (global as any).__TOOL_CONTEXT = { contextType, contextPath, basePath, tenantId }
+  (global as any).__TOOL_CONTEXT = { contextType, contextPath: safePath, basePath, tenantId }
   
   // Combine file tools with DOM tools
   const fileTools = [
@@ -169,12 +175,15 @@ export async function executeToolCall(
     let resolvedPath = inputPath
     
     // If we're in folder context and path doesn't start with that folder, prefix it
-    if (context.contextType === 'folder' && context.contextPath) {
+    if (context.contextType === 'folder' && context.contextPath && typeof context.contextPath === 'string') {
       // If path is just a filename (no / in it) or doesn't start with context path
       if (!inputPath.includes('/') || !inputPath.startsWith(context.contextPath)) {
         // Don't double-prefix if already includes context path
         if (!inputPath.startsWith(context.contextPath)) {
-          resolvedPath = `${context.contextPath}/${inputPath}`
+          // Clean up any leading slashes from both parts
+          const cleanContext = context.contextPath.replace(/\/$/, '')
+          const cleanInput = inputPath.replace(/^\//, '')
+          resolvedPath = cleanContext ? `${cleanContext}/${cleanInput}` : cleanInput
         }
       }
     }

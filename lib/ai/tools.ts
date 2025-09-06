@@ -14,17 +14,22 @@ interface Tool {
   }
 }
 
-export function getTools(contextType: string, contextPath: string, tenantId: string): Tool[] {
-  // Handle null/undefined contextPath
-  const safePath = contextPath || '/'
-  const basePath = contextType === 'folder' 
-    ? safePath 
-    : safePath.includes('/') 
-      ? safePath.substring(0, safePath.lastIndexOf('/')) 
-      : '/'
+export function getTools(contextType: string | null, contextPath: string | null, tenantId: string): Tool[] {
+  // Handle null/undefined contextPath and contextType
+  const safeType = contextType || 'folder'
+  const safePath = contextPath || ''
+  
+  // Calculate base path safely
+  let basePath = ''
+  if (safeType === 'folder') {
+    basePath = safePath
+  } else if (safePath && safePath.includes('/')) {
+    const lastSlash = safePath.lastIndexOf('/')
+    basePath = lastSlash > 0 ? safePath.substring(0, lastSlash) : ''
+  }
   
   // Store context info for tools to use
-  (global as any).__TOOL_CONTEXT = { contextType, contextPath: safePath, basePath, tenantId }
+  (global as any).__TOOL_CONTEXT = { contextType: safeType, contextPath: safePath, basePath, tenantId }
   
   // Combine file tools with DOM tools
   const fileTools = [

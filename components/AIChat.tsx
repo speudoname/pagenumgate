@@ -122,7 +122,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
 
   const addStatusMessage = (content: string, status?: Message['status']) => {
     const statusMessage: Message = {
-      id: `status-${Date.now()}`,
+      id: `status-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       role: 'status',
       content,
       timestamp: new Date(),
@@ -173,7 +173,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
           contextType,
           contextPath,
           message: userMessage.content,
-          history: messages,
+          history: messages.filter(m => m.role === 'user' || m.role === 'assistant'),
           model: selectedModel
         }),
         signal: abortControllerRef.current.signal
@@ -377,7 +377,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
   }
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden">
+    <div className="flex flex-col h-full bg-white overflow-hidden" style={{ maxHeight: '100vh' }}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div>

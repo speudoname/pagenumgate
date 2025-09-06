@@ -442,6 +442,8 @@ console.log('Hello from ${fileName}!');`
           onClick={() => {
             if (isFolder) {
               toggleFolder(node.path)
+              // Also select the folder so chat context is set
+              onFileSelect(node)
             } else {
               onFileSelect(node)
             }

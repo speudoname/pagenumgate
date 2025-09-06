@@ -147,7 +147,11 @@ export async function executeToolCall(
   tenantId: string,
   userId: string
 ): Promise<any> {
-  logger.log(`Executing tool: ${tool.name}`, tool.input)
+  logger.log('=== EXECUTE TOOL CALL ===')
+  logger.log(`Tool: ${tool.name}`)
+  logger.log(`Input:`, JSON.stringify(tool.input, null, 2))
+  logger.log(`Tenant: ${tenantId}`)
+  logger.log(`User: ${userId}`)
   
   // Ensure all paths are within tenant's directory
   const sanitizePath = (path: string) => {
@@ -171,15 +175,27 @@ export async function executeToolCall(
         const contentType = getContentType(ext)
         
         // Upload to blob storage
-        const blob = await put(fullPath, content, {
-          access: 'public',
-          contentType,
-        })
+        logger.log(`Attempting blob PUT to: ${fullPath}`)
+        logger.log(`Content length: ${content.length}`)
+        logger.log(`Content type: ${contentType}`)
         
-        return {
-          success: true,
-          message: `File created at ${path}`,
-          url: blob.url
+        try {
+          const blob = await put(fullPath, content, {
+            access: 'public',
+            contentType,
+          })
+          
+          logger.log(`Blob PUT successful! URL: ${blob.url}`)
+          
+          return {
+            success: true,
+            message: `File created at ${path}`,
+            url: blob.url
+          }
+        } catch (blobError) {
+          logger.error('Blob PUT failed:', blobError)
+          logger.error('Full error:', JSON.stringify(blobError, null, 2))
+          throw blobError
         }
       }
 

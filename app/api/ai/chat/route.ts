@@ -275,15 +275,19 @@ export async function POST(request: NextRequest) {
               }
             } else if (chunk.type === 'content_block_stop') {
               // Content block finished - parse complete tool input if it's a tool
-              if (chunk.index !== undefined && toolsCalled[chunk.index]) {
+              // The most recent tool is the last one in the array
+              const toolIndex = toolsCalled.length - 1
+              if (toolIndex >= 0 && toolInputBuffers[toolIndex]) {
                 try {
-                  const completeJson = toolInputBuffers[chunk.index]
+                  const completeJson = toolInputBuffers[toolIndex]
+                  logger.log(`Parsing tool input for ${toolsCalled[toolIndex].name}: ${completeJson}`)
                   if (completeJson) {
-                    toolsCalled[chunk.index].input = JSON.parse(completeJson)
+                    toolsCalled[toolIndex].input = JSON.parse(completeJson)
+                    logger.log(`Parsed input:`, toolsCalled[toolIndex].input)
                   }
                 } catch (parseError) {
-                  logger.error('Error parsing tool input JSON:', parseError, 'JSON:', toolInputBuffers[chunk.index])
-                  toolsCalled[chunk.index].input = {}
+                  logger.error('Error parsing tool input JSON:', parseError, 'JSON:', toolInputBuffers[toolIndex])
+                  toolsCalled[toolIndex].input = {}
                 }
               }
             } else if (chunk.type === 'message_stop') {
@@ -306,8 +310,13 @@ export async function POST(request: NextRequest) {
               })}\n\n`))
 
               try {
-                // Log tool input for debugging
-                logger.log(`Tool ${tool.name} input:`, tool.input)
+                // Enhanced debugging
+                logger.log('=== TOOL EXECUTION DEBUG ===')
+                logger.log(`Tool name: ${tool.name}`)
+                logger.log(`Tool input:`, JSON.stringify(tool.input, null, 2))
+                logger.log(`Tool object:`, JSON.stringify(tool, null, 2))
+                logger.log(`Tenant ID: ${tenantId}`)
+                logger.log(`User ID: ${userId}`)
                 
                 // Validate tool has input before executing or showing progress
                 if (!tool.input || Object.keys(tool.input).length === 0) {

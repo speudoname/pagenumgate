@@ -264,6 +264,12 @@ IMPORTANT: Consider the current context - the user has ${contextType === 'file' 
 
 When the user says "this", "it", "here", they mean: ${contextPath || 'root'}
 
+DELETION RULES:
+- "Delete all except X" = First list_files, then create individual delete_file for each item except X
+- "Delete all" = First list_files, then create individual delete_file for each item
+- For folders: delete_file will remove the folder and all its contents
+- Always list files first to know what to delete
+
 Respond ONLY with valid JSON in this format:
 {
   "analysis": "Brief analysis of what the user wants",
@@ -287,8 +293,11 @@ ${contextType === 'file' ? `
 - The content parameter MUST be the COMPLETE HTML with your changes applied
 ` : contextType === 'folder' ? `
 - YOU ARE IN THE FOLDER: "${contextPath}"
-- For create_file: use path: "${contextPath}/filename.html" and content: COMPLETE HTML
-- For list_files: use path: "${contextPath}"
+- IMPORTANT: All file operations are relative to this folder!
+- For create_file: use path: "filename.html" (will be created in ${contextPath})
+- For list_files: use path: "" or omit (will list ${contextPath})
+- For delete_file: use path: "filename.html" or "subfolder" (will delete from ${contextPath})
+- The system will automatically add "${contextPath}/" prefix to relative paths
 ` : `
 - No specific file/folder selected - use full paths
 `}

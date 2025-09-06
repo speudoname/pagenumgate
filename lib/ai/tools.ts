@@ -275,12 +275,53 @@ export async function executeToolCall(
         const resolvedPath = resolvePathWithContext(path)
         const fullPath = sanitizePath(resolvedPath)
         
-        // Delete from blob storage
-        await del(fullPath)
+        logger.log(`=== DELETE FILE/FOLDER ===`)
+        logger.log(`Input path: ${path}`)
+        logger.log(`Resolved path: ${resolvedPath}`)
+        logger.log(`Full path: ${fullPath}`)
+        
+        // Check if it's a folder by listing contents
+        const { blobs } = await list({
+          prefix: fullPath,
+        })
+        
+        logger.log(`Found ${blobs.length} items with prefix ${fullPath}`)
+        
+        if (blobs.length === 0) {
+          // Try exact match for single file
+          const exactMatch = await list({
+            prefix: fullPath,
+            limit: 1
+          })
+          
+          if (exactMatch.blobs.length > 0) {
+            logger.log(`Deleting single file: ${fullPath}`)
+            await del(fullPath)
+          } else {
+            logger.warn(`No files found to delete at: ${resolvedPath}`)
+            return {
+              success: false,
+              message: `No files found at ${resolvedPath}`
+            }
+          }
+        } else if (blobs.length === 1 && blobs[0].pathname === fullPath) {
+          // Single file exact match
+          logger.log(`Deleting single file: ${fullPath}`)
+          await del(fullPath)
+        } else {
+          // It's a folder - delete all files within it
+          logger.log(`Deleting folder with ${blobs.length} files`)
+          const deletePromises = blobs.map(blob => {
+            logger.log(`Deleting: ${blob.pathname}`)
+            return del(blob.pathname)
+          })
+          await Promise.all(deletePromises)
+        }
         
         return {
           success: true,
-          message: `Deleted ${resolvedPath}`
+          message: `Deleted ${resolvedPath}`,
+          filesDeleted: blobs.length || 1
         }
       }
 

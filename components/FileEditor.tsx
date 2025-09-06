@@ -35,19 +35,8 @@ export default function FileEditor({ file, onOpenAIChat }: FileEditorProps) {
     }
   }, [file])
   
-  // Refresh content periodically to catch external changes (from AI)
-  useEffect(() => {
-    if (!file || file.type !== 'file') return
-    
-    const interval = setInterval(() => {
-      // Only refresh if not currently editing (no unsaved changes)
-      if (content === originalContent) {
-        loadFileContent()
-      }
-    }, 2000) // Check every 2 seconds
-    
-    return () => clearInterval(interval)
-  }, [file, content, originalContent])
+  // Removed auto-refresh as it causes preview blinking
+  // Instead, we'll add a manual refresh button or refresh on AI chat close
 
   const loadFileContent = async () => {
     if (!file || !file.url) return
@@ -152,6 +141,14 @@ export default function FileEditor({ file, onOpenAIChat }: FileEditorProps) {
         </div>
         
         <div className="flex items-center gap-2">
+          <button
+            onClick={loadFileContent}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+            title="Refresh file content"
+          >
+            🔄 Refresh
+          </button>
+          
           {onOpenAIChat && (
             <button
               onClick={() => onOpenAIChat('file', file.path)}

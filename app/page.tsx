@@ -79,6 +79,16 @@ export default function PageBuilderDashboard() {
     setAIChatContext({ type, path })
     setShowAIChat(true)
   }
+  
+  // Auto-update AI chat context when file selection changes
+  useEffect(() => {
+    if (showAIChat && selectedFile) {
+      setAIChatContext({ 
+        type: selectedFile.type === 'folder' ? 'folder' : 'file', 
+        path: selectedFile.path 
+      })
+    }
+  }, [selectedFile, showAIChat])
 
   const handleFilesChanged = async () => {
     // Refresh the file browser when AI makes changes
@@ -99,10 +109,18 @@ export default function PageBuilderDashboard() {
             </div>
             <div className="flex items-center gap-4">
               <button
-                onClick={() => openAIChat('folder', '/')}
+                onClick={() => {
+                  // Use current selected file/folder context, or root if nothing selected
+                  if (selectedFile) {
+                    openAIChat(selectedFile.type === 'folder' ? 'folder' : 'file', selectedFile.path)
+                  } else {
+                    openAIChat('folder', '/')
+                  }
+                }}
                 className="px-3 py-1.5 border border-purple-500 text-sm font-medium rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700"
+                title={selectedFile ? `AI Chat for ${selectedFile.path}` : 'AI Chat (root folder)'}
               >
-                🤖 AI Assistant
+                🤖 AI Assistant {selectedFile && `(${selectedFile.name})`}
               </button>
               <div className="text-right">
                 <div className="text-sm text-gray-600">{user.email}</div>

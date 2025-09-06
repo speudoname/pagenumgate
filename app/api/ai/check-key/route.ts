@@ -28,9 +28,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Check both database and environment variable
-    const hasKey = !!data || !!process.env.ANTHROPIC_API_KEY
+    const hasEnvKey = !!process.env.ANTHROPIC_API_KEY
+    const hasDbKey = !!data
+    const hasKey = hasDbKey || hasEnvKey
 
-    return NextResponse.json({ hasKey })
+    logger.log('API Key check:', { hasEnvKey, hasDbKey, envKeyLength: process.env.ANTHROPIC_API_KEY?.length })
+
+    return NextResponse.json({ hasKey, source: hasDbKey ? 'database' : hasEnvKey ? 'environment' : 'none' })
   } catch (error) {
     logger.error('Check key API error:', error)
     return NextResponse.json(

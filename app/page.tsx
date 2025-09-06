@@ -138,7 +138,7 @@ export default function PageBuilderDashboard() {
 
         {/* Right Sidebar - AI Chat (when open) */}
         {showAIChat && aiChatContext && (
-          <div className="w-96 border-l border-gray-200">
+          <div className="w-96 h-full border-l border-gray-200">
             <AIChat
               contextType={aiChatContext.type}
               contextPath={aiChatContext.path}

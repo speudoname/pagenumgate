@@ -306,36 +306,40 @@ export async function POST(request: NextRequest) {
               })}\n\n`))
 
               try {
+                // Log tool input for debugging
+                logger.log(`Tool ${tool.name} input:`, tool.input)
+                
+                // Validate tool has input before executing or showing progress
+                if (!tool.input || Object.keys(tool.input).length === 0) {
+                  logger.error(`Tool ${tool.name} has no input. Tool object:`, tool)
+                  throw new Error(`Tool ${tool.name} called without required input`)
+                }
+                
                 // Send detailed progress updates based on tool type
                 if (tool.name === 'create_file') {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                     type: 'tool_progress',
                     tool: tool.name,
-                    message: `📝 Creating file: ${tool.input.path}`
+                    message: `📝 Creating file: ${tool.input?.path || 'new file'}`
                   })}\n\n`))
                 } else if (tool.name === 'edit_file') {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                     type: 'tool_progress',
                     tool: tool.name,
-                    message: `✏️ Editing file: ${tool.input.path}`
+                    message: `✏️ Editing file: ${tool.input?.path || 'file'}`
                   })}\n\n`))
                 } else if (tool.name === 'delete_file') {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                     type: 'tool_progress',
                     tool: tool.name,
-                    message: `🗑️ Deleting: ${tool.input.path}`
+                    message: `🗑️ Deleting: ${tool.input?.path || 'file'}`
                   })}\n\n`))
                 } else if (tool.name === 'list_files') {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                     type: 'tool_progress',
                     tool: tool.name,
-                    message: `📂 Listing files in: ${tool.input.path || 'current directory'}`
+                    message: `📂 Listing files in: ${tool.input?.path || 'current directory'}`
                   })}\n\n`))
-                }
-
-                // Validate tool has input before executing
-                if (!tool.input || Object.keys(tool.input).length === 0) {
-                  throw new Error(`Tool ${tool.name} called without required input`)
                 }
                 
                 const result = await executeToolCall(tool, tenantId, userId)

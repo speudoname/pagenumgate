@@ -37,15 +37,49 @@ interface ChatSession {
 }
 
 export default function AIChat({ contextType, contextPath, tenantId, onClose }: AIChatProps) {
-  const [messages, setMessages] = useState<Message[]>([])
+  // Store sessions per context in a map
+  const [sessions, setSessions] = useState<Map<string, { 
+    sessionId: string | null, 
+    messages: Message[] 
+  }>>(new Map())
+  
+  // Get the current context key
+  const contextKey = `${contextType}:${contextPath || 'global'}`
+  
+  // Get or create session for current context
+  const currentSession = sessions.get(contextKey) || { sessionId: null, messages: [] }
+  const messages = currentSession.messages
+  const sessionId = currentSession.sessionId
+  
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [sessionId, setSessionId] = useState<string | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
   const [selectedModel, setSelectedModel] = useState<string>('claude-sonnet-4')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  
+  // Helper functions to update current session
+  const setMessages = (newMessages: Message[] | ((prev: Message[]) => Message[])) => {
+    setSessions(prev => {
+      const newSessions = new Map(prev)
+      const current = newSessions.get(contextKey) || { sessionId: null, messages: [] }
+      const updatedMessages = typeof newMessages === 'function' 
+        ? newMessages(current.messages) 
+        : newMessages
+      newSessions.set(contextKey, { ...current, messages: updatedMessages })
+      return newSessions
+    })
+  }
+  
+  const setSessionId = (id: string | null) => {
+    setSessions(prev => {
+      const newSessions = new Map(prev)
+      const current = newSessions.get(contextKey) || { sessionId: null, messages: [] }
+      newSessions.set(contextKey, { ...current, sessionId: id })
+      return newSessions
+    })
+  }
 
   useEffect(() => {
     loadChatHistory()
@@ -343,14 +377,19 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
   }
 
   return (
-    <div className="flex flex-col h-full max-h-screen bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="flex flex-col h-full bg-white overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div>
           <h3 className="font-semibold">AI Assistant</h3>
           <p className="text-xs text-gray-500">
-            {contextType === 'folder' ? '📁' : '📄'} {contextPath || 'Global'}
+            {contextType === 'folder' ? '📁 Folder' : contextType === 'file' ? '📄 File' : '🌐 Global'}: {contextPath || 'Root'}
           </p>
+          {messages.length > 0 && (
+            <p className="text-xs text-gray-400 mt-1">
+              {messages.length} message{messages.length !== 1 ? 's' : ''} in this context
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* Model Switcher */}

@@ -343,7 +343,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
   }
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-lg">
+    <div className="flex flex-col h-full max-h-screen bg-white rounded-lg shadow-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div>
@@ -379,7 +379,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
         {messages.length === 0 && (
           <div className="text-center text-gray-500 py-8">
             <p>Start a conversation about this {contextType}</p>

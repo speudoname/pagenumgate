@@ -40,6 +40,58 @@ const CORRECT_MODELS = {
 
 **THE USER HAS BEEN EXTREMELY CLEAR: USE CLAUDE 4 AND OPUS 4.1 ONLY!**
 
+## 🚨 CRITICAL: SMART TOOL PARAMETER EXTRACTION - NEVER FORGET THIS! 🚨
+
+### AI MUST BE SMART ABOUT TOOL USAGE
+Every tool requires specific parameters. The AI MUST:
+
+1. **EXTRACT PARAMETERS FROM CONVERSATION**
+   - User says "create a page for Levan" → Extract: filename="levan.html", generate complete HTML
+   - User says "brutal design" → Apply brutalist styling with bold colors, harsh borders
+   - User says "add payment form" → Look up products, extract product ID, determine price
+   - NEVER call a tool with empty parameters `{}`
+
+2. **SMART DEFAULTS FOR EVERY TOOL**
+   - No filename given? Generate logical one (e.g., "new-page.html", "untitled.html")
+   - No path given? Use current context path
+   - No content specified? Generate appropriate placeholder content
+   - Creating a "page"? Always use .html extension
+
+3. **CONTENT GENERATION RULES**
+   - HTML files: Always include complete valid structure with DOCTYPE
+   - Apply requested styles immediately (brutal, modern, minimal)
+   - Include requested messages/text prominently
+   - Make content professional and complete, not just placeholders
+
+4. **PARAMETER INFERENCE EXAMPLES**
+   ```
+   User: "Create a nice brutal design page with hello levan message"
+   AI extracts:
+   - path: "levan.html" (from name mentioned)
+   - content: Complete HTML with brutal design and "Hello Levan" message
+   
+   User: "Add a webinar registration"
+   AI extracts:
+   - Must find webinar_id from context or ask
+   - Determine fields needed
+   - Place in logical location
+   ```
+
+5. **FUTURE TOOL DEVELOPMENT RULE**
+   **EVERY NEW TOOL MUST FOLLOW THIS PATTERN:**
+   - Clear parameter descriptions that guide extraction
+   - Smart defaults for missing parameters
+   - Context awareness (current folder, tenant, etc.)
+   - Business data integration where relevant
+   
+   When adding new tools, ALWAYS ensure:
+   - Tool description explains WHEN to use it
+   - Parameter descriptions explain HOW to extract from conversation
+   - Required parameters have fallback generation logic
+   - Optional parameters have sensible defaults
+
+**REMEMBER: The AI is a smart translator from human conversation to precise tool calls!**
+
 ## CRITICAL: Project Context
 **This is NOT a standalone project.** PageNumGate is an integral part of the NUM Gate multi-tenant SaaS platform located at `/Users/apple/numgate`.
 

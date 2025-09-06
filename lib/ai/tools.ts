@@ -21,21 +21,21 @@ export function getTools(contextType: string, contextPath: string, tenantId: str
   const fileTools = [
     {
       name: 'create_file',
-      description: 'Create a new file with content',
+      description: 'Create a new file with content. Use this when user asks to "create a page", "create a file", "make a new page", etc.',
       input_schema: {
         type: 'object',
         properties: {
           path: {
             type: 'string',
-            description: 'File path relative to current context'
+            description: 'File path with extension (e.g., "index.html", "styles.css"). Extract filename from user request - if they mention a name like "levan", use "levan.html". For pages, always use .html extension.'
           },
           content: {
             type: 'string',
-            description: 'Content of the file'
+            description: 'Complete file content. For HTML, generate complete valid HTML with DOCTYPE. Apply any requested styles (brutal, modern, minimal). Include any requested text/messages prominently.'
           },
           fileType: {
             type: 'string',
-            description: 'File type (html, css, js, json, etc.)',
+            description: 'Optional: File type will be auto-detected from extension',
             enum: ['html', 'css', 'js', 'json', 'md', 'txt', 'xml', 'yaml']
           }
         },

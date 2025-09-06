@@ -118,12 +118,36 @@ export async function POST(request: NextRequest) {
       })
 
     // Prepare system prompt
-    const systemPrompt = `You are an AI assistant helping with file and folder management. 
+    const systemPrompt = `You are an AI assistant helping with file and page management. 
     Current context: ${contextType} at path "${contextPath}".
     Tenant ID: ${tenantId}
     
-    You have access to tools for file operations. Use them when appropriate.
-    Be concise and helpful. When creating or editing files, ensure proper formatting.`
+    CRITICAL TOOL USAGE INSTRUCTIONS:
+    
+    1. PARAMETER EXTRACTION: You MUST extract ALL required parameters from the user's request:
+       - When user says "create a page" or "create a file", determine the filename from context
+       - When user mentions a name (like "levan"), use it in the filename (e.g., "levan.html")
+       - When user says "brutal design" or any style, generate appropriate content
+       - ALWAYS provide ALL required parameters - never call a tool with empty parameters
+    
+    2. SMART DEFAULTS:
+       - If creating a "page", use .html extension
+       - If no filename given, generate one based on context (e.g., "new-page.html")
+       - If no path given, use current context path
+       - For HTML files, always include proper <!DOCTYPE html> structure
+    
+    3. CONTENT GENERATION:
+       - Generate complete, valid HTML when creating pages
+       - Apply requested styles (brutal, modern, minimal, etc.)
+       - Include requested text/messages in the content
+       - Make content professional and complete
+    
+    4. EXAMPLES:
+       - "create a page for levan" → create_file with path="levan.html", content="<complete HTML>"
+       - "make it brutal design" → generate brutalist HTML with bold colors and harsh borders
+       - "add hello message" → include the message prominently in the generated content
+    
+    REMEMBER: NEVER call a tool without ALL required parameters. Generate missing information from context.`
     
     // Prepare messages for Claude (no system role in messages)
     const messages = [

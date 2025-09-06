@@ -163,11 +163,12 @@ export async function executeToolCall(
   try {
     switch (tool.name) {
       case 'create_file': {
-        const { path, content, fileType = 'txt' } = tool.input
+        const { path, content, fileType } = tool.input
         const fullPath = sanitizePath(path)
         
-        // Determine content type based on file extension
-        const contentType = getContentType(fileType)
+        // Determine content type based on file extension or fileType
+        const ext = path.split('.').pop() || fileType || 'txt'
+        const contentType = getContentType(ext)
         
         // Upload to blob storage
         const blob = await put(fullPath, content, {

@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
 
           let fullContent = ''
           let toolsCalled: any[] = []
+          let toolInputBuffers: string[] = [] // Buffer for accumulating tool inputs
 
           for await (const chunk of response) {
             if (chunk.type === 'content_block_start') {
@@ -185,6 +186,7 @@ export async function POST(request: NextRequest) {
                   input: {}
                 }
                 toolsCalled.push(tool)
+                toolInputBuffers.push('') // Initialize buffer for this tool
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'tool_use', tool })}\n\n`))
               }
             } else if (chunk.type === 'content_block_delta') {
@@ -193,10 +195,23 @@ export async function POST(request: NextRequest) {
                 fullContent += text
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: text })}\n\n`))
               } else if (chunk.delta.type === 'input_json_delta') {
-                // Tool input being streamed
+                // Tool input being streamed - accumulate the JSON string
                 const toolIndex = toolsCalled.length - 1
-                if (toolIndex >= 0) {
-                  toolsCalled[toolIndex].input = JSON.parse(chunk.delta.partial_json || '{}')
+                if (toolIndex >= 0 && chunk.delta.partial_json) {
+                  toolInputBuffers[toolIndex] += chunk.delta.partial_json
+                }
+              }
+            } else if (chunk.type === 'content_block_stop') {
+              // Content block finished - parse complete tool input if it's a tool
+              if (chunk.index !== undefined && toolsCalled[chunk.index]) {
+                try {
+                  const completeJson = toolInputBuffers[chunk.index]
+                  if (completeJson) {
+                    toolsCalled[chunk.index].input = JSON.parse(completeJson)
+                  }
+                } catch (parseError) {
+                  logger.error('Error parsing tool input JSON:', parseError, 'JSON:', toolInputBuffers[chunk.index])
+                  toolsCalled[chunk.index].input = {}
                 }
               }
             } else if (chunk.type === 'message_stop') {
@@ -246,6 +261,11 @@ export async function POST(request: NextRequest) {
                   })}\n\n`))
                 }
 
+                // Validate tool has input before executing
+                if (!tool.input || Object.keys(tool.input).length === 0) {
+                  throw new Error(`Tool ${tool.name} called without required input`)
+                }
+                
                 const result = await executeToolCall(tool, tenantId, userId)
                 const executionTime = Date.now() - startTime
                 
@@ -273,7 +293,13 @@ export async function POST(request: NextRequest) {
                 })}\n\n`))
               } catch (error) {
                 const executionTime = Date.now() - startTime
-                logger.error('Tool execution error:', error)
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+                
+                logger.error('Tool execution error:', {
+                  tool: tool.name,
+                  input: tool.input,
+                  error: errorMessage
+                })
                 
                 // Log failed tool execution
                 await supabase
@@ -284,15 +310,16 @@ export async function POST(request: NextRequest) {
                     tool_name: tool.name,
                     tool_input: tool.input,
                     success: false,
-                    error_message: error instanceof Error ? error.message : 'Unknown error',
+                    error_message: errorMessage,
                     execution_time_ms: executionTime,
                   })
 
-                // Send detailed error
+                // Send detailed error with input for debugging
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
                   type: 'tool_error',
                   tool: tool.name,
-                  error: error instanceof Error ? error.message : 'Unknown error',
+                  input: tool.input,
+                  error: errorMessage,
                   suggestion: getErrorSuggestion(tool.name, error),
                   executionTime
                 })}\n\n`))

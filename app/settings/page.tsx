@@ -221,7 +221,7 @@ export default function SettingsPage() {
           <h2 className="text-xl font-semibold mb-4">About AI Assistant</h2>
           <div className="prose prose-sm text-gray-600">
             <p>
-              The AI Assistant uses Claude 3.5 Sonnet to help you manage files and folders
+              The AI Assistant uses Claude Sonnet 4 and Claude Opus 4.1 to help you manage files and folders
               in your workspace. It can:
             </p>
             <ul>

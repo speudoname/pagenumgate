@@ -1,14 +1,44 @@
 # PageNumGate - Part of NUM Gate Platform
 
-## 🚨 CRITICAL: ALWAYS USE CORRECT CLAUDE MODEL NAMES - SONNET 4 AND OPUS 4.1
-**ABSOLUTE REQUIREMENT - DO NOT CONFUSE THESE**:
-- Use **Claude Sonnet 4** (model ID: `claude-4-sonnet-20250522`) - Released May 22, 2025
-- Use **Claude Opus 4.1** (model ID: `claude-opus-4-1-20250805`) - Released August 5, 2025
-- **NOT Claude 3.5 Sonnet or Claude 3 Opus** - The user specifically wants Sonnet 4 and Opus 4.1
-- **ALWAYS USE THESE EXACT MODEL IDS**:
-  - Sonnet 4: `claude-4-sonnet-20250522`
-  - Opus 4.1: `claude-opus-4-1-20250805`
-- The user has been very clear: Use Sonnet 4 and Opus 4.1, not the older models
+## 🚨🚨🚨 CRITICAL: CLAUDE 4 AND OPUS 4.1 ONLY - NEVER CHANGE THIS! 🚨🚨🚨
+
+### ⚠️ ABSOLUTE REQUIREMENT - NEVER EVER CHANGE THESE MODEL IDS ⚠️
+
+**THE ONLY MODELS TO USE:**
+1. **Claude Sonnet 4** - Model ID: `claude-sonnet-4-20250514`
+   - Released: May 2025
+   - This is the ONLY Sonnet model to use
+   - NEVER use claude-3-5-sonnet or any other variant
+
+2. **Claude Opus 4.1** - Model ID: `claude-opus-4-1-20250805`
+   - Released: August 5, 2025
+   - This is the ONLY Opus model to use
+   - NEVER use claude-3-opus or any other variant
+
+### ❌ NEVER USE THESE (THEY WILL CAUSE ERRORS):
+- ❌ `claude-3-5-sonnet-20241022` - OLD MODEL, DO NOT USE
+- ❌ `claude-3-opus-20240229` - OLD MODEL, DO NOT USE
+- ❌ Any Claude 3.x models - USER SPECIFICALLY WANTS CLAUDE 4
+- ❌ Any made-up model IDs that don't exist
+
+### ✅ CORRECT MODEL IDS (MEMORIZE THESE):
+```typescript
+const CORRECT_MODELS = {
+  'claude-sonnet-4': 'claude-sonnet-4-20250514',  // ONLY THIS
+  'claude-opus-4-1': 'claude-opus-4-1-20250805'   // ONLY THIS
+}
+```
+
+### 🔴 IF YOU SEE YOURSELF TYPING:
+- "claude-3" - STOP! Use Claude 4
+- "20241022" - STOP! That's the old model
+- "20240229" - STOP! That's the old model
+
+### 🟢 ALWAYS TYPE:
+- "claude-sonnet-4-20250514" for Sonnet
+- "claude-opus-4-1-20250805" for Opus
+
+**THE USER HAS BEEN EXTREMELY CLEAR: USE CLAUDE 4 AND OPUS 4.1 ONLY!**
 
 ## CRITICAL: Project Context
 **This is NOT a standalone project.** PageNumGate is an integral part of the NUM Gate multi-tenant SaaS platform located at `/Users/apple/numgate`.

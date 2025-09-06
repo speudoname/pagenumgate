@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS ai_chat_sessions (
   context_type VARCHAR(20) NOT NULL CHECK (context_type IN ('folder', 'file', 'global')),
   context_path TEXT NOT NULL, -- The file or folder path
   title TEXT, -- Optional title for the session
-  model VARCHAR(50) DEFAULT 'claude-3-5-sonnet-20241022',
+  model VARCHAR(50) DEFAULT 'claude-sonnet-4',
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

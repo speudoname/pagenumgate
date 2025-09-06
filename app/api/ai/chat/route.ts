@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { sessionId, contextType, contextPath, message, history, model = 'claude-3-5-sonnet-latest' } = await request.json()
+    const { sessionId, contextType, contextPath, message, history, model = 'claude-sonnet-4' } = await request.json()
 
     // Get API key - first check database, then fallback to environment variable
     let apiKey: string | null = null
@@ -149,16 +149,16 @@ export async function POST(request: NextRequest) {
           const tools = getTools(contextType, contextPath, tenantId)
 
           // Map model names to Anthropic model IDs
-          // IMPORTANT: Using Claude Sonnet 4 and Claude Opus 4.1 as specifically requested
+          // IMPORTANT: Using Claude 4 and Opus 4.1 ONLY - NO Claude 3.5!
           const modelMapping: Record<string, string> = {
-            'claude-sonnet-4': 'claude-4-sonnet-20250522', // Claude Sonnet 4 (Released May 22, 2025)
+            'claude-sonnet-4': 'claude-sonnet-4-20250514', // Claude Sonnet 4 (Released May 2025)
             'claude-opus-4-1': 'claude-opus-4-1-20250805', // Claude Opus 4.1 (Released August 5, 2025)
-            // Legacy mappings for compatibility
-            'claude-3-5-sonnet-latest': 'claude-4-sonnet-20250522',
-            'claude-3-opus-latest': 'claude-opus-4-1-20250805'
+            // Map any legacy references to Claude 4 models
+            'claude-3-5-sonnet-latest': 'claude-sonnet-4-20250514', // Redirect to Sonnet 4
+            'claude-3-opus-latest': 'claude-opus-4-1-20250805' // Redirect to Opus 4.1
           }
 
-          const selectedModel = modelMapping[model] || 'claude-4-sonnet-20250522'
+          const selectedModel = modelMapping[model] || 'claude-sonnet-4-20250514' // Default to Sonnet 4
 
           // Create message with Claude
           const response = await anthropic.messages.create({

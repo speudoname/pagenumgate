@@ -217,39 +217,6 @@ export const inspectElementTool: Tool = {
 }
 
 /**
- * Aggressively highlight text elements with high-contrast colors
- */
-export const highlightTextTool: Tool = {
-  name: 'highlight_text',
-  description: 'Aggressively highlight text with high-contrast colors. Use when user says: "highlight", "make stand out", "emphasize", "mark text", "color text aggressively", etc.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      path: {
-        type: 'string',
-        description: 'HTML file. SMART DEFAULT: Current context.'
-      },
-      selector: {
-        type: 'string',
-        description: 'Elements to highlight. SMART EXTRACTION: "all headings" → "h1,h2,h3,h4,h5,h6", "main text" → "p", "everything" → "*", "title" → "h1", specific selectors as-is.'
-      },
-      style: {
-        type: 'string',
-        enum: ['neon', 'danger', 'warning', 'success', 'brutal', 'glow', 'rainbow'],
-        description: 'Highlight style. SMART MAPPING: "aggressive" → "brutal", "bright" → "neon", "alert" → "danger", "colorful" → "rainbow"',
-        default: 'brutal'
-      },
-      intensity: {
-        type: 'number',
-        description: 'Intensity level 1-10. Higher = more aggressive. DEFAULT: 10 for maximum impact.',
-        default: 10
-      }
-    },
-    required: ['path', 'selector']
-  }
-}
-
-/**
  * Execute DOM tool operations
  */
 export async function executeDomTool(
@@ -423,136 +390,6 @@ export async function executeDomTool(
         }
       }
       
-      case 'highlight_text': {
-        // Define aggressive highlight styles
-        const styles: Record<string, string> = {
-          neon: `
-            background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00, #ff00ff) !important;
-            background-size: 400% 400% !important;
-            animation: neonPulse 2s ease infinite !important;
-            color: #000 !important;
-            font-weight: 900 !important;
-            text-shadow: 0 0 20px #fff, 0 0 30px #ff00ff, 0 0 40px #ff00ff !important;
-            padding: 4px 8px !important;
-            border-radius: 4px !important;
-          `,
-          danger: `
-            background: #ff0000 !important;
-            color: #ffffff !important;
-            font-weight: 900 !important;
-            padding: 8px 16px !important;
-            border: 4px solid #000000 !important;
-            box-shadow: 0 0 20px rgba(255,0,0,0.8) !important;
-            animation: dangerPulse 0.5s ease infinite !important;
-          `,
-          warning: `
-            background: #ffff00 !important;
-            color: #000000 !important;
-            font-weight: 900 !important;
-            padding: 8px 16px !important;
-            border: 4px solid #ff9900 !important;
-            text-decoration: underline wavy #ff0000 !important;
-            animation: warningShake 0.2s ease infinite !important;
-          `,
-          success: `
-            background: #00ff00 !important;
-            color: #000000 !important;
-            font-weight: 900 !important;
-            padding: 8px 16px !important;
-            border: 4px solid #008800 !important;
-            box-shadow: 0 0 30px rgba(0,255,0,0.8) !important;
-          `,
-          brutal: `
-            background: #000000 !important;
-            color: #ffff00 !important;
-            font-weight: 900 !important;
-            font-size: 120% !important;
-            padding: 12px 20px !important;
-            border: 8px solid #ffff00 !important;
-            box-shadow: 8px 8px 0 #ff00ff, 16px 16px 0 #00ffff !important;
-            transform: rotate(-2deg) !important;
-            display: inline-block !important;
-          `,
-          glow: `
-            background: linear-gradient(90deg, #ff00ff, #ffff00, #00ffff, #ff00ff) !important;
-            background-size: 200% 100% !important;
-            animation: glowMove 1s linear infinite !important;
-            color: #000000 !important;
-            font-weight: 900 !important;
-            padding: 10px 20px !important;
-            border-radius: 50px !important;
-            box-shadow: 0 0 40px currentColor !important;
-          `,
-          rainbow: `
-            background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet) !important;
-            background-size: 400% 100% !important;
-            animation: rainbowMove 3s ease infinite !important;
-            color: #ffffff !important;
-            font-weight: 900 !important;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8) !important;
-            padding: 8px 16px !important;
-            border: 4px solid #000 !important;
-          `
-        }
-        
-        const selectedStyle = styles[input.style || 'brutal'] || styles.brutal
-        const intensity = input.intensity || 10
-        
-        // Scale some properties based on intensity
-        const scaledStyle = selectedStyle.replace(/padding: ([\d]+)px/g, (match, p1) => {
-          return `padding: ${Math.round(parseInt(p1) * (intensity / 10))}px`
-        }).replace(/border: ([\d]+)px/g, (match, p1) => {
-          return `border: ${Math.round(parseInt(p1) * (intensity / 10))}px`
-        })
-        
-        // Add animation keyframes to the document
-        const animationStyles = `
-          @keyframes neonPulse {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-          @keyframes dangerPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-          }
-          @keyframes warningShake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-2px); }
-            75% { transform: translateX(2px); }
-          }
-          @keyframes glowMove {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
-          }
-          @keyframes rainbowMove {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
-          }
-        `
-        
-        // Apply highlight styles to selected elements
-        const success = parser.highlightElements(input.selector, scaledStyle, animationStyles)
-        
-        if (success) {
-          const updatedHtml = parser.getHTML()
-          await put(blobPath, updatedHtml, {
-            access: 'public',
-            contentType: 'text/html',
-          })
-          
-          return {
-            success: true,
-            message: `Applied ${input.style || 'brutal'} highlighting to ${input.selector}`,
-            selector: input.selector,
-            style: input.style || 'brutal',
-            intensity: intensity
-          }
-        } else {
-          throw new Error(`Could not find elements: ${input.selector}`)
-        }
-      }
-      
       default:
         throw new Error(`Unknown DOM tool: ${toolName}`)
     }
@@ -569,6 +406,5 @@ export const domTools = [
   updateElementTool,
   addElementTool,
   removeElementTool,
-  inspectElementTool,
-  highlightTextTool
+  inspectElementTool
 ]

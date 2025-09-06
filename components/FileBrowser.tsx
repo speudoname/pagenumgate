@@ -18,12 +18,13 @@ interface FileNode {
 interface FileBrowserProps {
   onFileSelect: (file: FileNode) => void
   selectedFile?: FileNode | null
+  onOpenAIChat?: (type: 'file' | 'folder', path: string) => void
 }
 
 type SortBy = 'name' | 'size' | 'date' | 'type'
 type SortOrder = 'asc' | 'desc'
 
-export default function FileBrowser({ onFileSelect, selectedFile }: FileBrowserProps) {
+export default function FileBrowser({ onFileSelect, selectedFile, onOpenAIChat }: FileBrowserProps) {
   const [files, setFiles] = useState<FileNode | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -472,6 +473,20 @@ console.log('Hello from ${fileName}!');`
             <span className="text-xs text-gray-500">
               {(node.size / 1024).toFixed(1)}KB
             </span>
+          )}
+          
+          {/* AI Chat button */}
+          {onOpenAIChat && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenAIChat(isFolder ? 'folder' : 'file', node.path)
+              }}
+              className="p-1 hover:bg-purple-100 rounded text-purple-600"
+              title="Open AI Chat"
+            >
+              🤖
+            </button>
           )}
         </div>
 

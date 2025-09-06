@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import FileBrowser from '@/components/FileBrowser'
 import FileEditor from '@/components/FileEditor'
+import AIChat from '@/components/AIChat'
 import { getApiUrl } from '@/lib/utils/api'
 
 interface UserInfo {
@@ -25,6 +26,8 @@ export default function PageBuilderDashboard() {
   const [user, setUser] = useState<UserInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null)
+  const [showAIChat, setShowAIChat] = useState(false)
+  const [aiChatContext, setAIChatContext] = useState<{ type: 'file' | 'folder', path: string } | null>(null)
 
   useEffect(() => {
     async function loadUser() {
@@ -71,6 +74,11 @@ export default function PageBuilderDashboard() {
     )
   }
 
+  const openAIChat = (type: 'file' | 'folder', path: string) => {
+    setAIChatContext({ type, path })
+    setShowAIChat(true)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -79,9 +87,15 @@ export default function PageBuilderDashboard() {
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-2xl font-bold">Page Builder</h1>
-              <p className="text-sm text-gray-600">File System Manager</p>
+              <p className="text-sm text-gray-600">AI-Powered File System Manager</p>
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => openAIChat('folder', '/')}
+                className="px-3 py-1.5 border border-purple-500 text-sm font-medium rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700"
+              >
+                🤖 AI Assistant
+              </button>
               <div className="text-right">
                 <div className="text-sm text-gray-600">{user.email}</div>
                 {user.tenant_id && (
@@ -110,11 +124,29 @@ export default function PageBuilderDashboard() {
           <FileBrowser 
             onFileSelect={setSelectedFile}
             selectedFile={selectedFile}
+            onOpenAIChat={openAIChat}
           />
         </div>
 
-        {/* Right Side - File Editor */}
-        <FileEditor file={selectedFile} />
+        {/* Middle - File Editor */}
+        <div className="flex-1">
+          <FileEditor 
+            file={selectedFile} 
+            onOpenAIChat={openAIChat}
+          />
+        </div>
+
+        {/* Right Sidebar - AI Chat (when open) */}
+        {showAIChat && aiChatContext && (
+          <div className="w-96 border-l border-gray-200">
+            <AIChat
+              contextType={aiChatContext.type}
+              contextPath={aiChatContext.path}
+              tenantId={user.tenant_id}
+              onClose={() => setShowAIChat(false)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Status Bar */}

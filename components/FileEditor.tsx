@@ -14,9 +14,10 @@ interface FileNode {
 
 interface FileEditorProps {
   file: FileNode | null
+  onOpenAIChat?: (type: 'file' | 'folder', path: string) => void
 }
 
-export default function FileEditor({ file }: FileEditorProps) {
+export default function FileEditor({ file, onOpenAIChat }: FileEditorProps) {
   const [content, setContent] = useState<string>('')
   const [originalContent, setOriginalContent] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -136,6 +137,15 @@ export default function FileEditor({ file }: FileEditorProps) {
         </div>
         
         <div className="flex items-center gap-2">
+          {onOpenAIChat && (
+            <button
+              onClick={() => onOpenAIChat('file', file.path)}
+              className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 hover:bg-purple-50 rounded flex items-center gap-1"
+              title="Open AI Chat"
+            >
+              🤖 AI Chat
+            </button>
+          )}
           {file.isPublished && file.publicUrl && (
             <button
               onClick={() => navigator.clipboard.writeText(file.publicUrl!)}

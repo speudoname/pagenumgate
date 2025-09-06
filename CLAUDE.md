@@ -79,8 +79,29 @@ blob-storage/
 ### Shared Resources
 - **Supabase**: Same instance as NUM Gate (hbopxprpgvrkucztsvnq)
 - **JWT Secret**: Must match NUM Gate for cross-app auth
-- **Vercel Blob**: Shared storage, tenant-isolated by folder structure
 - **User Sessions**: Passed from NUM Gate via JWT tokens
+
+### Blob Storage Architecture (Two Separate Stores)
+
+#### 1. Tenant-Specific Blob (`BLOB_READ_WRITE_TOKEN`)
+- **Purpose**: Stores individual tenant pages and files
+- **Structure**: `{tenant-id}/pages/`, `{tenant-id}/media/`, `{tenant-id}/unpublished/`
+- **Content**: User-created pages, uploaded media, tenant-specific configs
+- **Access**: Isolated per tenant - each tenant only accesses their folder
+
+#### 2. Shared Global Blob (`sharedblob_READ_WRITE_TOKEN`)
+- **Purpose**: Global assets accessible by all tenants
+- **Structure**: 
+  ```
+  _global/
+    ├── components/     # Shadcn-based component library (JS/CSS)
+    ├── themes/        # Theme presets (Neo-brutalism, Neomorphic, etc.)
+    ├── stock-images/  # Stock photos and illustrations
+    └── libraries/     # Shared utilities and scripts
+  ```
+- **Content**: Components, theme configs, stock media, shared libraries
+- **Access**: Read-only for all tenants, managed centrally
+- **Usage**: Referenced in tenant pages via CDN URLs
 
 ### Development Guidelines
 1. **Check NUM Gate first** before changing shared configs

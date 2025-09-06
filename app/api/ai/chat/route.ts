@@ -117,118 +117,91 @@ export async function POST(request: NextRequest) {
         content: message,
       })
 
-    // Prepare system prompt
-    const systemPrompt = `You are an AI-powered page builder assistant helping with file and page management.
-    Current context: ${contextType} at path "${contextPath}".
-    Tenant ID: ${tenantId}
-    
-    🎯 CRITICAL CONTEXT HANDLING:
-    ${contextType === 'folder' ? `
-    ⚠️ FOLDER CONTEXT MODE - ESSENTIAL RULES:
-    • DEFAULT LOCATION: ALL file operations must happen in "${contextPath}" folder
-    • When user says "create file X" → create "${contextPath}/X"
-    • When user says "make a page" → create in "${contextPath}/[name].html"
-    • When user says "list files" → list files in "${contextPath}"
-    • When user says "here" → refers to "${contextPath}" folder
-    • NEVER create files outside this folder unless explicitly requested with full path
-    • If user provides ONLY filename (no path), prepend "${contextPath}/"
-    • Example: "create contact page" → path should be "${contextPath}/contact.html"
-    ` : `
-    • Context: ${contextType === 'file' ? `Working on file: ${contextPath}` : 'Global context - working on tenant root'}
-    `}
-    
-    🎯 CRITICAL TOOL USAGE INSTRUCTIONS:
-    
-    1. SMART PARAMETER EXTRACTION:
-       • Extract ALL parameters from natural language
-       • "create a page for [name]" → use name.html as filename
-       • "make it [style]" → apply that design style
-       • "add [component]" → include that element
-       • NEVER call tools with empty/missing parameters
-    
-    2. CONTEXT AWARENESS:
-       • Current file/folder is your default context
-       • "this page" = current context path
-       • "here" = current directory (${contextPath})
-       • Remember previous actions in conversation
-    
-    3. INTELLIGENT DEFAULTS:
-       • Pages → .html extension
-       • Styles → .css extension  
-       • Scripts → .js extension
-       • Missing filename → generate from context
-       • Missing content → generate complete, valid content
-    
-    4. TOOL SELECTION PATTERNS:
-       File Operations (7 tools):
-       • "create/make/build" → create_file
-       • "change/update/modify" → edit_file
-       • "delete/remove" → delete_file
-       • "show/open/view" → read_file
-       • "list/what's here" → list_files
-       • "folder/directory" → create_folder
-       • "rename/move" → move_file
-       
-       DOM Manipulation (7 tools):
-       • "update section/header/footer" → update_section
-       • "preview/analyze" → get_preview_state
-       • "find text" → find_element
-       • "change element" → update_element
-       • "add element" → add_element
-       • "remove element" → remove_element
-       • "inspect" → inspect_element
-       
-       Page Building (5 tools):
-       • "add hero/features" → add_section
-       • "apply theme/style" → apply_theme
-       • "layout/columns" → update_layout
-       • "SEO/meta" → optimize_seo
-       • "component/widget" → add_component
-       
-       Business Integration (6 tools):
-       • "webinar/registration" → add_webinar_registration
-       • "payment/checkout" → add_payment_form
-       • "courses/LMS" → add_lms_course_card
-       • "testimonials/reviews" → add_testimonial_section
-       • "newsletter/email" → add_opt_in_form
-       • "products/shop" → add_product_showcase
-    
-    5. CONTENT GENERATION RULES:
-       • HTML files: Complete DOCTYPE, semantic HTML5, responsive
-       • Styles: brutal=bold/harsh, modern=gradients, minimal=clean
-       • Always include Tailwind CSS classes for styling
-       • Make content professional and complete
-    
-    6. EXAMPLES:
-       • "create landing page for sara" → create_file(path="sara.html", content=<full HTML>)
-       • "make it brutal" → apply_theme(theme="neo-brutalist") 
-       • "add contact form" → add_section(section_type="contact")
-       • "3 column layout" → update_layout(layout="three-columns")
-       • "add payment for course" → add_payment_form(product_id="course")
-    
-    ⚠️ REMEMBER: 
-    - Extract parameters from context, don't ask user
-    - Generate missing info intelligently
-    - Use conversation history for context
-    - ALWAYS provide ALL required parameters`
+    // Prepare lightweight system prompt
+    const systemPrompt = `You are an intelligent AI assistant for page building and file management.
+
+## 🔴 CRITICAL: Your Current Context
+${contextType === 'folder' ? `
+📁 FOLDER SELECTED: "${contextPath}"
+**THIS IS YOUR PRIMARY WORKING DIRECTORY**
+- ANY file operation defaults to THIS folder
+- "create file" → creates in ${contextPath}/
+- "delete all" → operates in ${contextPath}/
+- ALWAYS use this folder unless user specifies different path
+` : contextType === 'file' ? `
+📄 FILE SELECTED: "${contextPath}"
+**THIS IS YOUR PRIMARY WORKING FILE**
+- "edit this" or "update" → modifies THIS file
+- "add content" → adds to THIS file
+- Always read THIS file before editing
+` : `
+🌐 ROOT LEVEL - No specific selection
+- Look at the file browser to see what folder/file user is viewing
+- Default to root operations
+`}
+
+## Your Task Execution Process
+1. **ANALYZE**: What does the user want?
+2. **CONTEXT**: Apply to selected folder/file FIRST
+3. **PLAN**: Break down into specific tool calls
+4. **EXECUTE**: Run ALL necessary tools in sequence
+5. **VERIFY**: Ensure you completed everything
+
+## MANDATORY Execution Rules
+- **NEVER stop after just listing** - continue with the action
+- **ALWAYS complete multi-step tasks** - if you list files to delete, then DELETE them
+- **DEFAULT to selected context** - use ${contextPath || '/'} unless told otherwise
+- **Chain tools properly** - read→edit, list→delete, etc.
+
+## Your 25 Tools (use as many as needed)
+- File Ops: create_file, edit_file, delete_file, read_file, list_files, create_folder, move_file
+- DOM: update_section, get_preview_state, find_element, update_element, add_element, remove_element, inspect_element
+- Page: add_section, apply_theme, update_layout, optimize_seo, add_component
+- Business: add_webinar_registration, add_payment_form, add_lms_course_card, add_testimonial_section, add_opt_in_form, add_product_showcase
+
+## Common Multi-Step Patterns
+- "Delete all except X" → list_files → filter → delete_file (multiple times)
+- "Edit and add content" → read_file → modify → edit_file
+- "Create page with content" → create_file with full HTML
+- "Update multiple files" → list → read each → edit each
+
+## Remember
+- You're intelligent - understand natural language
+- You're thorough - complete ALL steps
+- You're context-aware - use the selected folder/file
+- You're persistent - don't stop until done
+
+CURRENT WORKING CONTEXT: ${contextPath || 'root'}`
     
     // Prepare messages for Claude (no system role in messages)
+    // Filter out system messages and empty content
     const messages = [
-      ...(history || []).filter((msg: any) => msg.role !== 'system').map((msg: any) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      })),
+      ...(history || [])
+        .filter((msg: any) => 
+          msg.role !== 'system' && 
+          msg.role !== 'status' && 
+          msg.content && 
+          msg.content.trim() !== ''
+        )
+        .map((msg: any) => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content
+        })),
       {
         role: 'user' as const,
         content: message
       }
-    ]
+    ].filter(msg => msg.content && msg.content.trim() !== '') // Final safety filter
 
     // Create streaming response
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          // Declare variables at the top of the function for proper scope
+          let fullContent = ''
+          let toolsCalled: any[] = []
+          
           // Send session ID first
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'session', sessionId: currentSessionId })}\n\n`))
 
@@ -247,67 +220,179 @@ export async function POST(request: NextRequest) {
 
           const selectedModel = modelMapping[model] || 'claude-sonnet-4-20250514' // Default to Sonnet 4
 
-          // Create message with Claude
-          const response = await anthropic.messages.create({
+          // ACTION PLAN APPROACH: Generate complete plan first, then execute
+          
+          // Step 1: Ask Claude to generate an action plan with all tool calls
+          const planResponse = await anthropic.messages.create({
             model: selectedModel,
             max_tokens: 4096,
-            system: systemPrompt, // Pass system as a parameter, not in messages
-            messages: messages as any,
-            tools: tools as any, // Cast to any since our Tool interface is compatible
-            stream: true,
+            system: `${systemPrompt}
+
+## CRITICAL: Action Plan Generation
+You must respond with a structured action plan in JSON format.
+Analyze the user's request and generate a complete plan with all necessary tool calls.
+Include ALL parameters for each tool, using the context path when needed.
+
+Respond ONLY with valid JSON in this format:
+{
+  "analysis": "Brief analysis of what the user wants",
+  "plan": [
+    {
+      "step": 1,
+      "description": "What this step does",
+      "tool": "tool_name",
+      "input": { /* all required parameters */ }
+    }
+  ],
+  "summary": "What will be accomplished"
+}
+
+REMEMBER:
+- Use contextPath (${contextPath || '/'}) as default for file operations
+- Include ALL required parameters for each tool
+- Chain operations properly (read before edit, list before delete, etc.)`,
+            messages: [...messages, { role: 'user' as const, content: `Generate an action plan for: ${message}` }] as any,
+            tools: [], // No tools in planning phase
           })
 
-          let fullContent = ''
-          let toolsCalled: any[] = []
-          let toolInputBuffers: string[] = [] // Buffer for accumulating tool inputs
-
-          for await (const chunk of response) {
-            if (chunk.type === 'content_block_start') {
-              if (chunk.content_block.type === 'text') {
-                // Text content starting
-              } else if (chunk.content_block.type === 'tool_use') {
-                // Tool use starting
-                const tool = {
-                  id: chunk.content_block.id,
-                  name: chunk.content_block.name,
-                  input: {}
-                }
-                toolsCalled.push(tool)
-                toolInputBuffers.push('') // Initialize buffer for this tool
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'tool_use', tool })}\n\n`))
+          // Extract the plan from Claude's response
+          let actionPlan: any = null
+          let planContent = ''
+          
+          if (planResponse.content && planResponse.content[0] && planResponse.content[0].type === 'text') {
+            planContent = planResponse.content[0].text
+            try {
+              // Try to parse JSON from the response
+              const jsonMatch = planContent.match(/\{[\s\S]*\}/)
+              if (jsonMatch) {
+                actionPlan = JSON.parse(jsonMatch[0])
               }
-            } else if (chunk.type === 'content_block_delta') {
-              if (chunk.delta.type === 'text_delta') {
-                const text = chunk.delta.text
-                fullContent += text
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: text })}\n\n`))
-              } else if (chunk.delta.type === 'input_json_delta') {
-                // Tool input being streamed - accumulate the JSON string
-                const toolIndex = toolsCalled.length - 1
-                if (toolIndex >= 0 && chunk.delta.partial_json) {
-                  toolInputBuffers[toolIndex] += chunk.delta.partial_json
-                }
-              }
-            } else if (chunk.type === 'content_block_stop') {
-              // Content block finished - parse complete tool input if it's a tool
-              // The most recent tool is the last one in the array
-              const toolIndex = toolsCalled.length - 1
-              if (toolIndex >= 0 && toolInputBuffers[toolIndex]) {
-                try {
-                  const completeJson = toolInputBuffers[toolIndex]
-                  logger.log(`Parsing tool input for ${toolsCalled[toolIndex].name}: ${completeJson}`)
-                  if (completeJson) {
-                    toolsCalled[toolIndex].input = JSON.parse(completeJson)
-                    logger.log(`Parsed input:`, toolsCalled[toolIndex].input)
-                  }
-                } catch (parseError) {
-                  logger.error('Error parsing tool input JSON:', parseError, 'JSON:', toolInputBuffers[toolIndex])
-                  toolsCalled[toolIndex].input = {}
-                }
-              }
-            } else if (chunk.type === 'message_stop') {
-              // Message complete
+            } catch (e) {
+              logger.error('Failed to parse action plan:', e)
             }
+          }
+
+          // If we couldn't get a valid plan, fall back to direct execution
+          if (!actionPlan || !actionPlan.plan || !Array.isArray(actionPlan.plan)) {
+            // Fallback: Try direct streaming approach with better prompting
+            const response = await anthropic.messages.create({
+              model: selectedModel,
+              max_tokens: 4096,
+              system: systemPrompt,
+              messages: messages as any,
+              tools: tools as any,
+              stream: true,
+            })
+
+            // Reset variables for fallback execution
+            fullContent = ''
+            toolsCalled = []
+            let currentToolBuffer = ''
+            let currentToolIndex = -1
+
+            for await (const chunk of response) {
+              if (chunk.type === 'content_block_start') {
+                if (chunk.content_block.type === 'text') {
+                  currentToolIndex = -1
+                } else if (chunk.content_block.type === 'tool_use') {
+                  const tool = {
+                    id: chunk.content_block.id,
+                    name: chunk.content_block.name,
+                    input: {}
+                  }
+                  toolsCalled.push(tool)
+                  currentToolIndex = toolsCalled.length - 1
+                  currentToolBuffer = ''
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'tool_use', tool })}\n\n`))
+                }
+              } else if (chunk.type === 'content_block_delta') {
+                if (chunk.delta.type === 'text_delta') {
+                  const text = chunk.delta.text
+                  fullContent += text
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: text })}\n\n`))
+                } else if (chunk.delta.type === 'input_json_delta') {
+                  if (currentToolIndex >= 0 && chunk.delta.partial_json) {
+                    currentToolBuffer += chunk.delta.partial_json
+                  }
+                }
+              } else if (chunk.type === 'content_block_stop') {
+                if (currentToolIndex >= 0 && currentToolBuffer) {
+                  try {
+                    toolsCalled[currentToolIndex].input = JSON.parse(currentToolBuffer)
+                    currentToolBuffer = ''
+                    currentToolIndex = -1
+                  } catch (parseError) {
+                    logger.error('JSON parse error for tool:', toolsCalled[currentToolIndex]?.name, parseError)
+                    toolsCalled[currentToolIndex].input = {}
+                    currentToolBuffer = ''
+                    currentToolIndex = -1
+                  }
+                }
+              }
+            }
+          } else {
+            // Execute the action plan
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              type: 'action_plan', 
+              plan: actionPlan 
+            })}\n\n`))
+
+            // Send the analysis as content
+            const planSummary = `📋 **Action Plan:**\n${actionPlan.analysis}\n\n**Steps to execute:**\n${actionPlan.plan.map((s: any) => `${s.step}. ${s.description}`).join('\n')}\n\n**Expected outcome:**\n${actionPlan.summary}`
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: planSummary })}\n\n`))
+
+            // Convert plan steps to tool calls with validation
+            toolsCalled = actionPlan.plan.map((step: any) => {
+              // Validate and enhance parameters based on context
+              let enhancedInput = { ...step.input }
+              
+              // Add context path if missing and applicable
+              if (contextPath && contextType) {
+                // For file operations, ensure path uses context
+                if (['create_file', 'edit_file', 'delete_file', 'read_file', 'list_files'].includes(step.tool)) {
+                  // For create_file, ensure we have a filename not just a folder
+                  if (step.tool === 'create_file') {
+                    if (!enhancedInput.path || enhancedInput.path === '/' || enhancedInput.path.endsWith('/')) {
+                      // If no filename provided, don't use just the folder path
+                      // The AI should provide a full path with filename
+                      console.warn('create_file needs a filename, not just folder path:', enhancedInput.path)
+                    } else if (!enhancedInput.path.startsWith('/') && contextType === 'folder') {
+                      // Relative path - prepend context folder
+                      const folderPath = contextPath.endsWith('/') ? contextPath : `${contextPath}/`
+                      enhancedInput.path = `${folderPath}${enhancedInput.path}`
+                    }
+                  } else {
+                    // For other file operations
+                    if (!enhancedInput.path || enhancedInput.path === '/') {
+                      if (contextType === 'folder') {
+                        enhancedInput.path = contextPath.endsWith('/') ? contextPath : `${contextPath}/`
+                      } else if (contextType === 'file') {
+                        enhancedInput.path = contextPath
+                      }
+                    } else if (!enhancedInput.path.startsWith('/') && contextType === 'folder') {
+                      // Relative path - prepend context
+                      enhancedInput.path = `${contextPath}/${enhancedInput.path}`
+                    }
+                  }
+                }
+                
+                // For DOM tools, ensure path uses context if it's a file
+                if (contextType === 'file' && step.tool.includes('element') || step.tool.includes('section')) {
+                  if (!enhancedInput.path) {
+                    enhancedInput.path = contextPath
+                  }
+                }
+              }
+              
+              return {
+                id: `tool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                name: step.tool,
+                input: enhancedInput
+              }
+            })
+            
+            // fullContent is used later to save the assistant message
+            fullContent = planSummary
           }
 
           // Execute any tool calls with detailed status updates
@@ -325,17 +410,9 @@ export async function POST(request: NextRequest) {
               })}\n\n`))
 
               try {
-                // Enhanced debugging
-                logger.log('=== TOOL EXECUTION DEBUG ===')
-                logger.log(`Tool name: ${tool.name}`)
-                logger.log(`Tool input:`, JSON.stringify(tool.input, null, 2))
-                logger.log(`Tool object:`, JSON.stringify(tool, null, 2))
-                logger.log(`Tenant ID: ${tenantId}`)
-                logger.log(`User ID: ${userId}`)
-                
-                // Validate tool has input before executing or showing progress
+                // Validate tool has input before executing
                 if (!tool.input || Object.keys(tool.input).length === 0) {
-                  logger.error(`Tool ${tool.name} has no input. Tool object:`, tool)
+                  logger.error(`Tool ${tool.name} has no input`)
                   throw new Error(`Tool ${tool.name} called without required input`)
                 }
                 

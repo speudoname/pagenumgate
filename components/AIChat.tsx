@@ -143,7 +143,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
     if (!input.trim() || isLoading) return
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       role: 'user',
       content: input.trim(),
       timestamp: new Date()
@@ -195,7 +195,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let assistantMessage: Message = {
-        id: Date.now().toString(),
+        id: `assistant-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         role: 'assistant',
         content: '',
         timestamp: new Date(),
@@ -225,6 +225,9 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
                   newMessages[newMessages.length - 1] = { ...assistantMessage }
                   return newMessages
                 })
+              } else if (data.type === 'action_plan') {
+                // Display the action plan
+                addStatusMessage(`📋 Generated action plan with ${data.plan.plan?.length || 0} steps`, 'processing')
               } else if (data.type === 'tool_use') {
                 // Add tool execution status
                 const tool: ToolCall = {
@@ -327,7 +330,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose, on
       } else {
         console.error('Error sending message:', error)
         setMessages(prev => [...prev, {
-          id: Date.now().toString(),
+          id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           role: 'system',
           content: `Error: ${error.message}`,
           timestamp: new Date()

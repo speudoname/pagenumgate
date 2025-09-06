@@ -348,16 +348,46 @@ export async function executeToolCall(
         const resolvedPath = resolvePathWithContext(path)
         const fullPath = sanitizePath(resolvedPath)
         
-        // Create a placeholder file in the folder
-        const placeholderPath = `${fullPath}/.placeholder`
-        await put(placeholderPath, '', {
+        // Create an index.html file in the folder (same as UI behavior)
+        const indexPath = `${fullPath}/index.html`
+        const folderName = resolvedPath.split('/').pop() || 'New Folder'
+        const defaultHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${folderName}</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #000;
+            padding-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to ${folderName}</h1>
+    <p>This is the default page for this folder. Start editing to create your content!</p>
+</body>
+</html>`
+        
+        await put(indexPath, defaultHtml, {
           access: 'public',
-          contentType: 'text/plain',
+          contentType: 'text/html',
+          addRandomSuffix: false,
+          allowOverwrite: true,
         })
         
         return {
           success: true,
-          message: `Folder created at ${resolvedPath}`
+          message: `Folder created at ${resolvedPath} with index.html`
         }
       }
 

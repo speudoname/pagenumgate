@@ -257,8 +257,8 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
             className="text-sm border rounded px-2 py-1"
             title="Select AI Model"
           >
-            <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet (Fast)</option>
-            <option value="claude-3-opus-latest">Claude 3 Opus (Powerful)</option>
+            <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+            <option value="claude-3-opus-latest">Claude 3 Opus</option>
           </select>
           <button
             onClick={clearHistory}

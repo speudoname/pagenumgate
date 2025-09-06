@@ -117,9 +117,10 @@ export async function POST(request: NextRequest) {
           const tools = getTools(contextType, contextPath, tenantId)
 
           // Map model names to Anthropic model IDs
+          // IMPORTANT: Using Claude 3.5 Sonnet and Claude 3 Opus 4.1 as requested
           const modelMapping: Record<string, string> = {
-            'claude-3-5-sonnet-latest': 'claude-3-5-sonnet-20241022',
-            'claude-3-opus-latest': 'claude-3-opus-20240229',
+            'claude-3-5-sonnet-latest': 'claude-3-5-sonnet-20241022', // Claude 3.5 Sonnet
+            'claude-3-opus-latest': 'claude-3-opus-20240229', // Claude 3 Opus (latest available)
             'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet-20241022',
             'claude-3-opus-20240229': 'claude-3-opus-20240229'
           }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { getApiUrl } from '@/lib/utils/api'
 
 interface AIChatProps {
   contextType: 'file' | 'folder' | 'global'
@@ -50,7 +51,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
 
   const checkApiKey = async () => {
     try {
-      const response = await fetch('/api/ai/check-key')
+      const response = await fetch(getApiUrl('/api/ai/check-key'))
       const data = await response.json()
       setHasApiKey(data.hasKey)
     } catch (error) {
@@ -61,7 +62,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
 
   const loadChatHistory = async () => {
     try {
-      const response = await fetch(`/api/ai/history?contextType=${contextType}&contextPath=${encodeURIComponent(contextPath)}`)
+      const response = await fetch(getApiUrl(`/api/ai/history?contextType=${contextType}&contextPath=${encodeURIComponent(contextPath)}`))
       if (response.ok) {
         const data = await response.json()
         if (data.session) {
@@ -92,7 +93,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
     try {
       abortControllerRef.current = new AbortController()
       
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch(getApiUrl('/api/ai/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,7 +200,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
     if (!confirm('Are you sure you want to clear the chat history for this context?')) return
 
     try {
-      await fetch('/api/ai/history', {
+      await fetch(getApiUrl('/api/ai/history'), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

@@ -117,15 +117,16 @@ export async function POST(request: NextRequest) {
           const tools = getTools(contextType, contextPath, tenantId)
 
           // Map model names to Anthropic model IDs
-          // IMPORTANT: Using Claude 3.5 Sonnet and Claude 3 Opus 4.1 as requested
+          // IMPORTANT: Using Claude Sonnet 4 and Claude Opus 4.1 as specifically requested
           const modelMapping: Record<string, string> = {
-            'claude-3-5-sonnet-latest': 'claude-3-5-sonnet-20241022', // Claude 3.5 Sonnet
-            'claude-3-opus-latest': 'claude-3-opus-20240229', // Claude 3 Opus (latest available)
-            'claude-3-5-sonnet-20241022': 'claude-3-5-sonnet-20241022',
-            'claude-3-opus-20240229': 'claude-3-opus-20240229'
+            'claude-sonnet-4': 'claude-4-sonnet-20250522', // Claude Sonnet 4 (Released May 22, 2025)
+            'claude-opus-4-1': 'claude-opus-4-1-20250805', // Claude Opus 4.1 (Released August 5, 2025)
+            // Legacy mappings for compatibility
+            'claude-3-5-sonnet-latest': 'claude-4-sonnet-20250522',
+            'claude-3-opus-latest': 'claude-opus-4-1-20250805'
           }
 
-          const selectedModel = modelMapping[model] || 'claude-3-5-sonnet-20241022'
+          const selectedModel = modelMapping[model] || 'claude-4-sonnet-20250522'
 
           // Create message with Claude
           const response = await anthropic.messages.create({

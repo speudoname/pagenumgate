@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS ai_chat_sessions (
   context_type VARCHAR(20) NOT NULL CHECK (context_type IN ('folder', 'file', 'global')),
   context_path TEXT NOT NULL, -- The file or folder path
   title TEXT, -- Optional title for the session
-  model VARCHAR(50) DEFAULT 'claude-3-5-sonnet-latest',
+  model VARCHAR(50) DEFAULT 'claude-sonnet-4',
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS ai_tool_executions (
 CREATE TABLE IF NOT EXISTS ai_model_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL UNIQUE REFERENCES tenants(id) ON DELETE CASCADE,
-  default_model VARCHAR(50) DEFAULT 'claude-3-5-sonnet-latest',
-  available_models JSONB DEFAULT '["claude-3-5-sonnet-latest", "claude-3-opus-latest"]',
+  default_model VARCHAR(50) DEFAULT 'claude-sonnet-4',
+  available_models JSONB DEFAULT '["claude-sonnet-4", "claude-opus-4-1"]',
   model_settings JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

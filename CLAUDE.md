@@ -1,11 +1,14 @@
 # PageNumGate - Part of NUM Gate Platform
 
-## 🚨 CRITICAL: ALWAYS USE CORRECT CLAUDE MODEL NAMES
-**IMPORTANT**: When implementing Claude/Anthropic integrations:
-- Use **Claude 3.5 Sonnet** (model ID: `claude-3-5-sonnet-20241022`)
-- Use **Claude 3 Opus** (model ID: `claude-3-opus-20240229`)
-- NOT "Sonnet 4" or "Opus 4.1" - these don't exist yet
-- The user specifically wants Claude 3.5 Sonnet and Claude 3 Opus
+## 🚨 CRITICAL: ALWAYS USE CORRECT CLAUDE MODEL NAMES - SONNET 4 AND OPUS 4.1
+**ABSOLUTE REQUIREMENT - DO NOT CONFUSE THESE**:
+- Use **Claude Sonnet 4** (model ID: `claude-4-sonnet-20250522`) - Released May 22, 2025
+- Use **Claude Opus 4.1** (model ID: `claude-opus-4-1-20250805`) - Released August 5, 2025
+- **NOT Claude 3.5 Sonnet or Claude 3 Opus** - The user specifically wants Sonnet 4 and Opus 4.1
+- **ALWAYS USE THESE EXACT MODEL IDS**:
+  - Sonnet 4: `claude-4-sonnet-20250522`
+  - Opus 4.1: `claude-opus-4-1-20250805`
+- The user has been very clear: Use Sonnet 4 and Opus 4.1, not the older models
 
 ## CRITICAL: Project Context
 **This is NOT a standalone project.** PageNumGate is an integral part of the NUM Gate multi-tenant SaaS platform located at `/Users/apple/numgate`.

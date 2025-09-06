@@ -32,7 +32,7 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
-  const [selectedModel, setSelectedModel] = useState<string>('claude-3-5-sonnet-latest')
+  const [selectedModel, setSelectedModel] = useState<string>('claude-sonnet-4')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -257,8 +257,8 @@ export default function AIChat({ contextType, contextPath, tenantId, onClose }: 
             className="text-sm border rounded px-2 py-1"
             title="Select AI Model"
           >
-            <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
-            <option value="claude-3-opus-latest">Claude 3 Opus</option>
+            <option value="claude-sonnet-4">Claude Sonnet 4</option>
+            <option value="claude-opus-4-1">Claude Opus 4.1</option>
           </select>
           <button
             onClick={clearHistory}

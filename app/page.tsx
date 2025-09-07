@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import FileBrowser, { FileBrowserRef } from '@/components/FileBrowser'
 import FileEditor from '@/components/FileEditor'
-import SimpleAIChat from '@/components/SimpleAIChat'
+import PageAwareAIChat from '@/components/PageAwareAIChat'
 import { getApiUrl } from '@/lib/utils/api'
 import { UserInfo, FileNode } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ export default function PageBuilderDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null)
   const [aiChatCollapsed, setAiChatCollapsed] = useState(false)
+  const previewRef = useRef<HTMLIFrameElement>(null)
   const [fileBrowserCollapsed, setFileBrowserCollapsed] = useState(false)
   const [currentFolder, setCurrentFolder] = useState<string>('/')
   const [leftSidebarWidth, setLeftSidebarWidth] = useState(320)
@@ -53,6 +54,14 @@ export default function PageBuilderDashboard() {
 
   const handleBackToGateway = () => {
     window.location.href = '/dashboard'
+  }
+
+  // Function to get current page HTML from preview iframe
+  const getCurrentPageHTML = () => {
+    if (previewRef.current && previewRef.current.contentDocument) {
+      return previewRef.current.contentDocument.documentElement.outerHTML
+    }
+    return ''
   }
 
   const handleFilesChanged = async () => {
@@ -237,7 +246,7 @@ export default function PageBuilderDashboard() {
 
         {/* Right Sidebar - AI Assistant (always visible, can collapse) */}
         <div className={`${aiChatCollapsed ? 'w-12' : ''} h-full border-l-2 border-black transition-all duration-300`} style={!aiChatCollapsed ? { width: rightSidebarWidth } : {}}>
-          <SimpleAIChat
+          <PageAwareAIChat
             currentFolder={selectedFile ? (selectedFile.type === 'folder' ? selectedFile.path : selectedFile.path.substring(0, selectedFile.path.lastIndexOf('/')) || '/') : '/'}
             selectedFile={selectedFile}
             onClose={() => {}}
@@ -245,6 +254,7 @@ export default function PageBuilderDashboard() {
             isCollapsed={aiChatCollapsed}
             onToggleCollapse={() => setAiChatCollapsed(!aiChatCollapsed)}
             onBackToGateway={handleBackToGateway}
+            getCurrentPageHTML={getCurrentPageHTML}
           />
         </div>
       </div>

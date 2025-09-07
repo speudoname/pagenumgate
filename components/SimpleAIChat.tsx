@@ -39,12 +39,12 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
     setTimeout(scrollToBottom, 100)
   }, [])
 
-  // Load or create chat session
+  // Load or create global chat session
   useEffect(() => {
     async function initSession() {
       try {
         setSessionLoading(true)
-        const response = await fetch(getApiUrl(`/api/ai/sessions?folder=${encodeURIComponent(currentFolder)}`), {
+        const response = await fetch(getApiUrl('/api/ai/sessions'), {
           method: 'GET',
           credentials: 'include'
         })
@@ -71,7 +71,7 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
     }
     
     initSession()
-  }, [currentFolder])
+  }, [])  // Only load once on mount
 
   // Save message to session
   const saveMessageToSession = async (message: Message) => {
@@ -151,10 +151,11 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
 
     } catch (error) {
       console.error('Error sending message:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
+        content: `Error: ${errorMessage}. Please check the console for details.`
       }])
     } finally {
       setLoading(false)

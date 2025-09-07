@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { Globe } from 'lucide-react'
 
 interface FileContextMenuProps {
   x: number
@@ -144,7 +145,7 @@ export default function FileContextMenu({
               }}
               className="w-full px-3 py-2 text-left hover:bg-green-50 text-green-600 flex items-center gap-2 text-sm"
             >
-              <span>🌐</span>
+              <Globe className="w-4 h-4" />
               <span>Publish</span>
             </button>
           )}

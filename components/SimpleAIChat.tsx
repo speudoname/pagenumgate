@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { getApiUrl } from '@/lib/utils/api'
 import { FileNode, Message } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { ChevronLeft, ChevronRight, Send, FileText, Folder } from 'lucide-react'
 
 interface SimpleAIChatProps {
   currentFolder: string
@@ -11,9 +13,10 @@ interface SimpleAIChatProps {
   onFilesChanged: () => void
   isCollapsed?: boolean
   onToggleCollapse?: () => void
+  onBackToGateway?: () => void
 }
 
-export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onFilesChanged, isCollapsed = false, onToggleCollapse }: SimpleAIChatProps) {
+export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onFilesChanged, isCollapsed = false, onToggleCollapse, onBackToGateway }: SimpleAIChatProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -81,13 +84,13 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
   // Collapsed drawer state
   if (isCollapsed) {
     return (
-      <div className="w-12 h-full bg-white border-l flex flex-col items-center py-4">
+      <div className="w-12 h-full bg-white border-l-2 border-black flex flex-col items-center py-4">
         <button
           onClick={onToggleCollapse}
-          className="text-gray-500 hover:text-gray-700 mb-4"
+          className="w-8 h-8 bg-gray-100 border-2 border-black rounded-md flex items-center justify-center text-gray-700 hover:bg-gray-200 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-100 mb-4"
           title="Expand AI Assistant"
         >
-          ◀
+            <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="writing-mode-vertical text-xs text-gray-500" style={{ writingMode: 'vertical-rl' }}>
           AI Assistant
@@ -97,18 +100,31 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
   }
 
   return (
-    <div className="h-full flex flex-col bg-white relative">
-      {/* Collapse button */}
-      <button
-        onClick={onToggleCollapse}
-        className="absolute top-2 left-2 z-10 text-gray-500 hover:text-gray-700"
-        title="Collapse AI Assistant"
-      >
-        ▶
-      </button>
+    <div className="h-full flex flex-col bg-white relative border-l-2 border-black">
+      {/* Header with Collapse button and Back to Gateway button */}
+      <div className="flex justify-between items-center p-3 border-b-2 border-black">
+        <button
+          onClick={onToggleCollapse}
+          className="w-8 h-8 bg-gray-100 border-2 border-black rounded-md flex items-center justify-center text-gray-700 hover:bg-gray-200 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-100"
+          title="Collapse AI Assistant"
+        >
+            <ChevronRight className="w-4 h-4" />
+        </button>
+        <div className="flex items-center gap-2">
+          {onBackToGateway && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBackToGateway}
+            >
+              Back to Gateway
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pt-8">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="text-center text-gray-500 mt-8">
             <div className="text-4xl mb-2">🤖</div>
@@ -156,18 +172,9 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input area with Neo-brutalism styling */}
-      <div className="border-t-2 border-black p-3 bg-white">
-        {/* Context indicator - simplified */}
-        <div className="text-xs mb-2 text-gray-600">
-          {selectedFile 
-            ? selectedFile.type === 'file' 
-              ? `📄 ${selectedFile.name}`
-              : `📁 ${selectedFile.path}`
-            : '📁 /'}
-        </div>
-        
-        <div className="flex gap-2 items-end">
+      {/* Input area with controls inside */}
+      <div className="bg-white p-2">
+        <div className="border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] bg-white">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -178,18 +185,31 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
               }
             }}
             placeholder="Ask me to create or edit..."
-            rows={2}
-            className="flex-1 px-3 py-2 border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] focus:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] focus:translate-x-[2px] focus:translate-y-[2px] transition-all duration-100 focus:outline-none resize-none min-h-[60px] max-h-[120px]"
+            rows={3}
+            className="w-full px-2 py-2 focus:outline-none resize-none min-h-[80px] max-h-[120px] bg-transparent"
             style={{ overflowY: 'auto' }}
             disabled={loading}
           />
-          <button
-            onClick={sendMessage}
-            disabled={loading || !input.trim()}
-            className="w-10 h-10 bg-black text-white border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 flex items-center justify-center"
-          >
-            <span className="text-lg">➤</span>
-          </button>
+          
+          {/* Controls inside the input box */}
+          <div className="flex items-center justify-between px-2 pb-2">
+            <div className="text-xs text-gray-600">
+              {selectedFile 
+                ? selectedFile.type === 'file' 
+                  ? <>Working on: {selectedFile.name}</>
+                  : <>Working on: {selectedFile.path}</>
+                : <>Working on: /</>}
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={sendMessage}
+              disabled={loading || !input.trim()}
+              className="w-6 h-6 p-0 bg-black hover:bg-gray-800 text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-100"
+            >
+              <Send className="w-3 h-3 text-white" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -6,6 +6,9 @@ import FileContextMenu from './FileContextMenu'
 import FileModal from './FileModal'
 import MoveModal from './MoveModal'
 import { FileNode } from '@/lib/types'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { FileText } from 'lucide-react'
 
 interface FileBrowserProps {
   onFileSelect: (file: FileNode) => void
@@ -583,7 +586,7 @@ Add your notes about this folder here...
               isUnpublishedFolder ? '🔒' :
               isExpanded ? '📂' : '📁'
             ) : (
-              isFolderNotes ? '📝' :
+              isFolderNotes ? <FileText className="w-4 h-4" /> :
               node.name.endsWith('.html') ? '📄' :
               node.name.endsWith('.css') ? '🎨' :
               node.name.endsWith('.js') ? '⚡' :
@@ -626,14 +629,13 @@ Add your notes about this folder here...
     <>
       <div className="flex flex-col h-full">
         {/* Toolbar */}
-        <div className="border-b border-gray-200 p-2 space-y-2">
+        <div className="border-b-2 border-black p-2 space-y-2">
           {/* Search */}
-          <input
+          <Input
             type="text"
             placeholder="Search files..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           
           {/* Sort options */}
@@ -641,7 +643,7 @@ Add your notes about this folder here...
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+              className="flex-1 px-2 py-1 text-xs border-2 border-black rounded-md shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] focus:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] focus:translate-x-[2px] focus:translate-y-[2px] transition-all duration-100 focus:outline-none"
             >
               <option value="name">Name</option>
               <option value="size">Size</option>
@@ -649,20 +651,22 @@ Add your notes about this folder here...
               <option value="type">Type</option>
             </select>
             
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
-            </button>
+            </Button>
             
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={loadFiles}
-              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
               title="Refresh"
             >
               🔄
-            </button>
+            </Button>
           </div>
         </div>
 

@@ -1,277 +1,236 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { getApiUrl } from '@/lib/utils/api'
+import { useState, useRef, memo, useCallback } from 'react'
 import { FileNode } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { RotateCcw, Smartphone, Monitor, Copy, FileText, Globe } from 'lucide-react'
+import FileEditorContent, { FileEditorContentRef } from './FileEditorContent'
+
+// Memoized header component to prevent visual refresh
+const FileEditorHeader = memo(({ 
+  file, 
+  hasChanges, 
+  preview, 
+  previewMode, 
+  onRefresh, 
+  onCopyUrl, 
+  onEdit, 
+  onPreview, 
+  onSave, 
+  saving,
+  onSetPreviewMode
+}: {
+  file: FileNode | null
+  hasChanges: boolean
+  preview: boolean
+  previewMode: 'mobile' | 'desktop'
+  onRefresh: () => void
+  onCopyUrl: () => void
+  onEdit: () => void
+  onPreview: () => void
+  onSave: () => void
+  saving: boolean
+  onSetPreviewMode: (mode: 'mobile' | 'desktop') => void
+}) => {
+  if (!file) return null
+
+  return (
+    <div className="bg-white border-b border-gray-300 px-4 py-2 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-500">
+          Working on:
+        </span>
+        <span className="font-semibold">
+          {file.type === 'folder' ? `${file.name || '/'} (notes)` : file.name}
+        </span>
+        {hasChanges && (
+          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded border border-yellow-300">
+            Modified
+          </span>
+        )}
+        {file.isPublished && (
+          <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded flex items-center gap-1 border border-green-300">
+            <Globe className="w-3 h-3" />
+          </span>
+        )}
+      </div>
+      
+      <div className="flex items-center gap-2">
+        {/* Mobile/Desktop buttons - always reserved space */}
+        <div className="flex items-center gap-1 w-20">
+          {preview && (
+            <>
+              <Button
+                variant={previewMode === 'mobile' ? "default" : "outline"}
+                size="sm"
+                onClick={() => onSetPreviewMode('mobile')}
+                title="Mobile Preview"
+                className="w-6 h-6 p-0"
+              >
+                <Smartphone className="w-3 h-3" />
+              </Button>
+              <Button
+                variant={previewMode === 'desktop' ? "default" : "outline"}
+                size="sm"
+                onClick={() => onSetPreviewMode('desktop')}
+                title="Desktop Preview"
+                className="w-6 h-6 p-0"
+              >
+                <Monitor className="w-3 h-3" />
+              </Button>
+            </>
+          )}
+        </div>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRefresh}
+          title={file.type === 'folder' ? "Refresh folder notes" : "Refresh file content"}
+          className="w-6 h-6 p-0"
+        >
+          <RotateCcw className="w-3 h-3" />
+        </Button>
+        
+        {file.isPublished && file.publicUrl && (
+          <Button
+            variant="success"
+            size="sm"
+            onClick={onCopyUrl}
+            title="Copy Public URL"
+            className="text-xs px-2 py-1"
+          >
+            <Copy className="w-3 h-3 mr-1" />
+            Copy URL
+          </Button>
+        )}
+        
+        <div className="flex items-center gap-1">
+          <Button
+            variant={preview ? "outline" : "default"}
+            size="sm"
+            onClick={onEdit}
+            className="text-xs px-2 py-1"
+          >
+            Edit
+          </Button>
+          <Button
+            variant={preview ? "default" : "outline"}
+            size="sm"
+            onClick={onPreview}
+            className="text-xs px-2 py-1"
+          >
+            Preview
+          </Button>
+        </div>
+        
+        <Button
+          variant="default"
+          size="sm"
+          onClick={onSave}
+          disabled={!hasChanges || saving}
+          className="text-xs px-2 py-1"
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </Button>
+      </div>
+    </div>
+  )
+})
+
+FileEditorHeader.displayName = 'FileEditorHeader'
 
 interface FileEditorProps {
   file: FileNode | null
 }
 
 export default function FileEditor({ file }: FileEditorProps) {
-  const [content, setContent] = useState<string>('')
-  const [originalContent, setOriginalContent] = useState<string>('')
-  const [loading, setLoading] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState(false)
-  const [lastRefresh, setLastRefresh] = useState(Date.now())
+  const [previewMode, setPreviewMode] = useState<'mobile' | 'desktop'>('desktop')
+  const [loading, setLoading] = useState(false)
+  const contentRef = useRef<FileEditorContentRef>(null)
 
-  useEffect(() => {
-    if (file) {
-      if (file.type === 'file') {
-        loadFileContent()
-      } else if (file.type === 'folder') {
-        loadFolderNotes()
-      }
-    } else {
-      setContent('')
-      setOriginalContent('')
-    }
-  }, [file])
-  
-  // Removed auto-refresh as it causes preview blinking
-  // Instead, we'll add a manual refresh button or refresh on AI chat close
+  const handleContentChange = useCallback((content: string, originalContent: string) => {
+    setHasChanges(content !== originalContent)
+  }, [])
 
-  const loadFileContent = async () => {
-    if (!file || !file.url) return
-    
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const response = await fetch(getApiUrl('/api/files/read'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          url: file.url,
-          path: file.path 
-        })
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to load file content')
-      }
-      
-      const data = await response.json()
-      setContent(data.content)
-      setOriginalContent(data.content)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load file')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadFolderNotes = async () => {
-    if (!file) return
-    
-    try {
-      setLoading(true)
-      setError(null)
-      
-      // Use the read-folder-notes endpoint which looks for .notes.md in the folder
-      const notesPath = file.path === '/' ? '.notes.md' : `${file.path}/.notes.md`
-      
-      const response = await fetch(getApiUrl('/api/files/read-folder-notes'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          path: notesPath  // Send the full path to .notes.md
-        })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setContent(data.content || '')
-        setOriginalContent(data.content || '')
-      } else {
-        // No notes file exists yet, start with empty content
-        setContent('')
-        setOriginalContent('')
-      }
-    } catch (err) {
-      // No notes file exists yet, that's ok - start with empty content
-      setContent('')
-      setOriginalContent('')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const saveFile = async () => {
-    if (!file) return
+  const handleSave = useCallback(async () => {
+    if (!contentRef.current) return
     
     try {
       setSaving(true)
-      setError(null)
-      
-      // For folders, save as .notes.md
-      if (file.type === 'folder') {
-        const notesPath = file.path === '/' ? '.notes.md' : `${file.path}/.notes.md`
-        
-        const response = await fetch(getApiUrl('/api/files/save'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            path: notesPath,
-            content,
-            contentType: 'text/markdown'
-          })
-        })
-        
-        if (!response.ok) {
-          throw new Error('Failed to save folder notes')
-        }
-      } else {
-        // Regular file save
-        const response = await fetch(getApiUrl('/api/files/save'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            path: file.path,
-            content,
-            contentType: file.name.endsWith('.css') ? 'text/css' : 
-                         file.name.endsWith('.js') ? 'application/javascript' : 
-                         file.name.endsWith('.md') ? 'text/markdown' :
-                         'text/html'
-          })
-        })
-        
-        if (!response.ok) {
-          throw new Error('Failed to save file')
-        }
-      }
-      
-      setOriginalContent(content)
-      alert('Saved successfully!')
+      await contentRef.current.saveFile()
+      setHasChanges(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      // Error is handled by the content component
     } finally {
       setSaving(false)
     }
-  }
+  }, [])
 
-  const hasChanges = content !== originalContent
+  // Stable callback functions to prevent header re-renders
+  const handleRefresh = useCallback(() => {
+    contentRef.current?.refreshContent()
+  }, [])
+
+  const handleCopyUrl = useCallback(() => {
+    if (file?.isPublished && file?.publicUrl) {
+      navigator.clipboard.writeText(file.publicUrl)
+    }
+  }, [file?.isPublished, file?.publicUrl])
+
+  const handleEdit = useCallback(() => setPreview(false), [])
+  const handlePreview = useCallback(() => setPreview(true), [])
+  const handleSetPreviewMode = useCallback((mode: 'mobile' | 'desktop') => setPreviewMode(mode), [])
 
   if (!file) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
         <div className="text-center">
-          <div className="text-4xl mb-2">📝</div>
+          <FileText className="w-8 h-8 text-gray-400" />
           <div>Select a file to view or edit</div>
         </div>
       </div>
     )
   }
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
-        Loading file content...
-      </div>
-    )
-  }
-
   return (
     <div className="flex-1 flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">
-            {file.type === 'folder' ? 'Folder Notes:' : 'Editing:'}
-          </span>
-          <span className="font-semibold">
-            {file.type === 'folder' ? `${file.name || '/'} (notes)` : file.name}
-          </span>
-          {hasChanges && (
-            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
-              Modified
-            </span>
-          )}
-          {file.isPublished && (
-            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded flex items-center gap-1">
-              🌐 Published
-            </span>
-          )}
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => file.type === 'folder' ? loadFolderNotes() : loadFileContent()}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
-            title={file.type === 'folder' ? "Refresh folder notes" : "Refresh file content"}
-          >
-            🔄 Refresh
-          </button>
-          
-          {file.isPublished && file.publicUrl && (
-            <button
-              onClick={() => navigator.clipboard.writeText(file.publicUrl!)}
-              className="px-3 py-1.5 text-sm border border-green-300 text-green-700 hover:bg-green-50 rounded flex items-center gap-1"
-              title="Copy Public URL"
-            >
-              📋 Copy URL
-            </button>
-          )}
-          
-          <button
-            onClick={() => setPreview(!preview)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
-          >
-            {preview ? 'Edit' : 'Preview'}
-          </button>
-          
-          <button
-            onClick={saveFile}
-            disabled={!hasChanges || saving}
-            className={`
-              px-4 py-1.5 text-sm rounded font-medium
-              ${hasChanges 
-                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'}
-            `}
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      </div>
+      <FileEditorHeader
+        file={file}
+        hasChanges={hasChanges}
+        preview={preview}
+        previewMode={previewMode}
+        onRefresh={handleRefresh}
+        onCopyUrl={handleCopyUrl}
+        onEdit={handleEdit}
+        onPreview={handlePreview}
+        onSave={handleSave}
+        saving={saving}
+        onSetPreviewMode={handleSetPreviewMode}
+      />
 
 
       {/* Error message */}
       {error && (
-        <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-600">
+        <div className="bg-red-50 border-b-2 border-red-500 px-4 py-2 text-sm text-red-600">
           {error}
         </div>
       )}
 
-      {/* Editor/Preview */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        {preview ? (
-          <div className="h-full overflow-auto bg-white">
-            {file.name.endsWith('.html') ? (
-              <iframe
-                srcDoc={content}
-                className="w-full h-full border-0"
-                title="Preview"
-                sandbox="allow-scripts allow-forms allow-modals allow-popups allow-presentation"
-              />
-            ) : (
-              <pre className="h-full overflow-auto p-4 whitespace-pre-wrap font-mono text-sm">
-                {content}
-              </pre>
-            )}
-          </div>
-        ) : (
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full h-full p-4 font-mono text-sm resize-none focus:outline-none bg-white"
-            placeholder="Start editing..."
-            spellCheck={false}
-          />
-        )}
-      </div>
+      {/* Content Area - Only this part reloads when file changes */}
+      <FileEditorContent
+        ref={contentRef}
+        file={file}
+        preview={preview}
+        previewMode={previewMode}
+        onContentChange={handleContentChange}
+        onError={setError}
+        onLoadingChange={setLoading}
+      />
     </div>
   )
 }

@@ -6,6 +6,8 @@ import FileEditor from '@/components/FileEditor'
 import SimpleAIChat from '@/components/SimpleAIChat'
 import { getApiUrl } from '@/lib/utils/api'
 import { UserInfo, FileNode } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { ChevronRight, ChevronLeft, Circle } from 'lucide-react'
 
 export default function PageBuilderDashboard() {
   const [user, setUser] = useState<UserInfo | null>(null)
@@ -60,13 +62,30 @@ export default function PageBuilderDashboard() {
     }
   }
 
+  // Auto-select root directory on page load
+  useEffect(() => {
+    if (user && !selectedFile) {
+      // Create a root directory node
+      const rootNode: FileNode = {
+        name: '/',
+        type: 'folder',
+        path: '/',
+        children: []
+      }
+      setSelectedFile(rootNode)
+    }
+  }, [user, selectedFile])
+
   const handleMouseDown = (side: 'left' | 'right') => (e: React.MouseEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     setIsResizing(side)
   }
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizing) return
+    
+    e.preventDefault()
     
     if (isResizing === 'left') {
       const newWidth = Math.max(200, Math.min(600, e.clientX))
@@ -77,18 +96,23 @@ export default function PageBuilderDashboard() {
     }
   }, [isResizing])
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     setIsResizing(null)
   }, [])
 
   // Mouse event listeners for resize - MUST be before any early returns
   useEffect(() => {
     if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
+      document.addEventListener('mousemove', handleMouseMove, { passive: false })
+      document.addEventListener('mouseup', handleMouseUp, { passive: false })
+      document.addEventListener('mouseleave', handleMouseUp, { passive: false })
+      
       return () => {
         document.removeEventListener('mousemove', handleMouseMove)
         document.removeEventListener('mouseup', handleMouseUp)
+        document.removeEventListener('mouseleave', handleMouseUp)
       }
     }
   }, [isResizing, handleMouseMove, handleMouseUp])
@@ -107,12 +131,13 @@ export default function PageBuilderDashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">Authentication failed</p>
-          <button
-            onClick={handleBackToGateway}
-            className="px-4 py-2 border-2 border-black text-sm font-medium rounded-md bg-yellow-400 hover:bg-yellow-300 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
-          >
-            Back to Gateway
-          </button>
+              <Button
+                variant="warning"
+                size="sm"
+                onClick={handleBackToGateway}
+              >
+                Back to Gateway
+              </Button>
         </div>
       </div>
     )
@@ -120,59 +145,47 @@ export default function PageBuilderDashboard() {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 flex-shrink-0">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-2">
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-bold">AI Page Builder</h1>
-              <span className="text-xs text-gray-500">•</span>
-              <span className="text-xs text-gray-600">Build static pages with AI assistance</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-xs text-gray-600">{user.email}</div>
-              </div>
-              <button
-                onClick={handleBackToGateway}
-                className="px-3 py-1.5 border border-gray-300 text-xs font-medium rounded hover:bg-gray-50 transition-colors"
-              >
-                Back to Gateway
-              </button>
-            </div>
+      {/* Thin Header */}
+      <div className="bg-black text-white border-b border-gray-300 px-4 py-1 flex-shrink-0">
+        <div className="flex justify-between items-center">
+          <div className="text-xs text-white">
+            {selectedFile ? `Editing: ${selectedFile.path}` : 'No file selected'}
+          </div>
+          <div className="text-xs text-gray-300">
+            {user.email}
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content - File System */}
+      {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left Sidebar - File Browser with collapse */}
         {fileBrowserCollapsed ? (
-          <div className="w-12 h-full bg-white border-r flex flex-col items-center py-4">
+          <div className="w-12 h-full bg-white border-r-2 border-black flex flex-col items-center py-4">
             <button
               onClick={() => setFileBrowserCollapsed(false)}
-              className="text-gray-500 hover:text-gray-700 mb-4"
+              className="w-8 h-8 bg-gray-100 border-2 border-black rounded-md flex items-center justify-center text-gray-700 hover:bg-gray-200 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-100 mb-4"
               title="Expand File Browser"
             >
-              ▶
+              <ChevronRight className="w-4 h-4" />
             </button>
             <div className="writing-mode-vertical text-xs text-gray-500" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
               Files
             </div>
           </div>
         ) : (
-          <div className="bg-white border-r border-gray-200 flex flex-col overflow-hidden" style={{ width: leftSidebarWidth }}>
-            <div className="border-b border-gray-200 px-4 py-3 flex justify-between items-center">
+          <div className="bg-white border-r-2 border-black flex flex-col overflow-hidden" style={{ width: leftSidebarWidth }}>
+            <div className="border-b-2 border-black px-4 py-3 flex justify-between items-center">
               <div>
                 <h2 className="font-semibold text-gray-900">Files</h2>
                 <p className="text-xs text-gray-500 mt-1">Your workspace</p>
               </div>
               <button
                 onClick={() => setFileBrowserCollapsed(true)}
-                className="text-gray-500 hover:text-gray-700"
+                className="w-8 h-8 bg-gray-100 border-2 border-black rounded-md flex items-center justify-center text-gray-700 hover:bg-gray-200 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-100"
                 title="Collapse File Browser"
               >
-                ◀
+                <ChevronLeft className="w-4 h-4" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -188,13 +201,13 @@ export default function PageBuilderDashboard() {
         {/* Left Resize Handle */}
         {!fileBrowserCollapsed && (
           <div
-            className="w-1 bg-gray-200 hover:bg-gray-400 cursor-col-resize transition-colors"
+            className="w-1 bg-black hover:bg-gray-800 cursor-col-resize transition-colors"
             onMouseDown={handleMouseDown('left')}
           />
         )}
 
         {/* Middle - File Editor */}
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 flex flex-col border-l-2 border-r-2 border-black">
           <FileEditor 
             file={selectedFile}
           />
@@ -203,13 +216,13 @@ export default function PageBuilderDashboard() {
         {/* Right Resize Handle */}
         {!aiChatCollapsed && (
           <div
-            className="w-1 bg-gray-200 hover:bg-gray-400 cursor-col-resize transition-colors"
+            className="w-1 bg-black hover:bg-gray-800 cursor-col-resize transition-colors"
             onMouseDown={handleMouseDown('right')}
           />
         )}
 
         {/* Right Sidebar - AI Assistant (always visible, can collapse) */}
-        <div className={`${aiChatCollapsed ? 'w-12' : ''} h-full border-l border-gray-200 transition-all duration-300`} style={!aiChatCollapsed ? { width: rightSidebarWidth } : {}}>
+        <div className={`${aiChatCollapsed ? 'w-12' : ''} h-full border-l-2 border-black transition-all duration-300`} style={!aiChatCollapsed ? { width: rightSidebarWidth } : {}}>
           <SimpleAIChat
             currentFolder={selectedFile ? (selectedFile.type === 'folder' ? selectedFile.path : selectedFile.path.substring(0, selectedFile.path.lastIndexOf('/')) || '/') : '/'}
             selectedFile={selectedFile}
@@ -217,19 +230,20 @@ export default function PageBuilderDashboard() {
             onFilesChanged={handleFilesChanged}
             isCollapsed={aiChatCollapsed}
             onToggleCollapse={() => setAiChatCollapsed(!aiChatCollapsed)}
+            onBackToGateway={handleBackToGateway}
           />
         </div>
       </div>
 
-      {/* Status Bar */}
-      <div className="bg-gray-800 text-white text-xs px-4 py-2 flex justify-between flex-shrink-0">
+      {/* Thin Footer */}
+      <div className="bg-gray-800 text-white text-xs px-4 py-1 flex justify-between flex-shrink-0 border-t border-gray-600">
         <div className="flex items-center gap-4">
-          <span>🟢 Connected to NUM Gate</span>
+          <span><Circle className="w-3 h-3 text-green-500 fill-current" /> Connected to NUM Gate</span>
           <span>|</span>
           <span>Blob Storage: Active</span>
         </div>
         <div>
-          {selectedFile ? `Editing: ${selectedFile.path}` : 'No file selected'}
+          Powered by NumGate
         </div>
       </div>
     </div>

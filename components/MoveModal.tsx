@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { getApiUrl } from '@/lib/utils/api'
 import { FileNode } from '@/lib/types'
+import { Button } from '@/components/ui/button'
 
 interface MoveModalProps {
   isOpen: boolean
@@ -158,19 +159,19 @@ export default function MoveModal({
         </div>
 
         <div className="flex gap-2 justify-end">
-          <button
+          <Button
+            variant="outline"
             onClick={onClose}
-            className="px-4 py-2 border-2 border-gray-300 rounded hover:bg-gray-50"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="default"
             onClick={() => onConfirm(selectedPath)}
-            className="px-4 py-2 border-2 border-black rounded font-medium bg-blue-500 text-white hover:bg-blue-600"
             disabled={!canMoveToFolder(selectedPath)}
           >
             Move Here
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 interface FileModalProps {
   isOpen: boolean
@@ -63,12 +65,11 @@ export default function FileModal({
                 {inputLabel}
               </label>
             )}
-            <input
+            <Input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={inputPlaceholder}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -111,24 +112,19 @@ export default function FileModal({
         )}
 
         <div className="flex gap-2 justify-end">
-          <button
+          <Button
+            variant="outline"
             onClick={onClose}
-            className="px-4 py-2 border-2 border-gray-300 rounded hover:bg-gray-50"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={type === 'confirm' ? 'destructive' : 'default'}
             onClick={handleConfirm}
-            className={`
-              px-4 py-2 border-2 border-black rounded font-medium
-              ${type === 'confirm' 
-                ? 'bg-red-500 text-white hover:bg-red-600' 
-                : 'bg-blue-500 text-white hover:bg-blue-600'}
-            `}
             disabled={type === 'input' && !inputValue.trim()}
           >
             {type === 'confirm' ? 'Delete' : type === 'select' ? 'Create' : 'Create'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

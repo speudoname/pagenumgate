@@ -251,12 +251,13 @@ export default function PageBuilderDashboard() {
 
       {/* Thin Footer */}
       <div className="bg-gray-800 text-white text-xs px-4 py-1 flex justify-between flex-shrink-0 border-t border-gray-600">
-        <div className="flex items-center gap-4">
-          <span><Circle className="w-3 h-3 text-green-500 fill-current" /> Connected to NUM Gate</span>
-          <span>|</span>
-          <span>Blob Storage: Active</span>
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <Circle className="w-3 h-3 text-green-500 fill-current flex-shrink-0" />
+          <span className="whitespace-nowrap">Connected to NUM Gate</span>
+          <span className="text-gray-400">|</span>
+          <span className="whitespace-nowrap">Blob Storage: Active</span>
         </div>
-        <div>
+        <div className="whitespace-nowrap">
           Powered by NumGate
         </div>
       </div>

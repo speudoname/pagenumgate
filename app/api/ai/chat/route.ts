@@ -11,7 +11,7 @@ const anthropic = new Anthropic({
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, currentFolder, selectedFile } = await request.json()
+    const { message, currentFolder, selectedFile, sessionId, conversationHistory } = await request.json()
     
     // Get tenant ID from JWT or use dev default
     const cookieStore = await cookies()
@@ -34,12 +34,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
     
-    // Call Claude with contextual prompt
+    // Build messages array with history
+    const messages: any[] = []
+    
+    // Add conversation history if available
+    if (conversationHistory && conversationHistory.length > 0) {
+      // Include last 10 messages for context
+      const recentHistory = conversationHistory.slice(-10)
+      for (const msg of recentHistory) {
+        messages.push({
+          role: msg.role,
+          content: msg.content
+        })
+      }
+    }
+    
+    // Add current message
+    messages.push({ role: 'user', content: message })
+    
+    // Call Claude with contextual prompt and conversation history
     const response = await anthropic.messages.create({
       model: 'claude-opus-4-1-20250805',
       max_tokens: 4096,
       system: buildContextualPrompt(currentFolder, selectedFile),
-      messages: [{ role: 'user', content: message }],
+      messages,
       tools: simpleTools as any
     })
 

@@ -154,7 +154,8 @@ export async function executeSimpleTool(
         const blob = await put(fullPath, input.content, {
           access: 'public',
           contentType: 'text/html',
-          addRandomSuffix: false
+          addRandomSuffix: false,
+          allowOverwrite: true
         })
         return { success: true, message: `Created ${input.filename}`, url: blob.url }
       }
@@ -184,7 +185,8 @@ export async function executeSimpleTool(
           const blob = await put(fullPath, content, {
             access: 'public',
             contentType: 'text/html',
-            addRandomSuffix: false
+            addRandomSuffix: false,
+            allowOverwrite: true
           })
           return { success: true, message: `Updated ${input.filename} (partial edit)`, url: blob.url }
         } else if (input.content) {
@@ -192,7 +194,8 @@ export async function executeSimpleTool(
           const blob = await put(fullPath, input.content, {
             access: 'public',
             contentType: 'text/html',
-            addRandomSuffix: false
+            addRandomSuffix: false,
+            allowOverwrite: true
           })
           return { success: true, message: `Updated ${input.filename}`, url: blob.url }
         } else {
@@ -278,7 +281,8 @@ export async function executeSimpleTool(
         await put(newPath, content, {
           access: 'public',
           contentType: 'text/html',
-          addRandomSuffix: false
+          addRandomSuffix: false,
+          allowOverwrite: true
         })
         
         // Delete old file

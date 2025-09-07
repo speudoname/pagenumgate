@@ -20,10 +20,82 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when messages change
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    setTimeout(scrollToBottom, 100)
+  }, [])
+
+  // Load or create chat session
+  useEffect(() => {
+    async function initSession() {
+      try {
+        setSessionLoading(true)
+        const response = await fetch(getApiUrl(`/api/ai/sessions?folder=${encodeURIComponent(currentFolder)}`), {
+          method: 'GET',
+          credentials: 'include'
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setSessionId(data.session.id)
+          
+          // Load existing messages
+          if (data.messages && data.messages.length > 0) {
+            setMessages(data.messages.map((msg: any) => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              tools: msg.tools_used
+            })))
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load session:', error)
+      } finally {
+        setSessionLoading(false)
+      }
+    }
+    
+    initSession()
+  }, [currentFolder])
+
+  // Save message to session
+  const saveMessageToSession = async (message: Message) => {
+    if (!sessionId) return
+    
+    try {
+      await fetch(getApiUrl('/api/ai/sessions'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          sessionId,
+          role: message.role,
+          content: message.content,
+          tools: message.tools
+        })
+      })
+    } catch (error) {
+      console.error('Failed to save message:', error)
+    }
+  }
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return
+    if (!input.trim() || loading || sessionLoading) return
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -34,6 +106,9 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setLoading(true)
+    
+    // Save user message
+    await saveMessageToSession(userMessage)
 
     try {
       const response = await fetch(getApiUrl('/api/ai/chat'), {
@@ -43,7 +118,9 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
         body: JSON.stringify({
           message: userMessage.content,
           currentFolder,
-          selectedFile
+          selectedFile,
+          sessionId,
+          conversationHistory: messages
         })
       })
 
@@ -61,6 +138,9 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
       }
 
       setMessages(prev => [...prev, assistantMessage])
+      
+      // Save assistant message
+      await saveMessageToSession(assistantMessage)
 
       // If files were changed, notify parent
       if (data.tools?.some((t: any) => 
@@ -125,13 +205,17 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
+        {sessionLoading ? (
+          <div className="text-center text-gray-500 mt-8">
+            <p>Loading chat history...</p>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="text-center text-gray-500 mt-8">
             <div className="text-4xl mb-2">🤖</div>
             <p>Hi! I can help you create and manage HTML files.</p>
             <p className="text-sm mt-2">Try: "Create a new contact.html page"</p>
           </div>
-        )}
+        ) : null}
 
         {messages.map(msg => (
           <div
@@ -188,7 +272,7 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
             rows={3}
             className="w-full px-2 py-2 focus:outline-none resize-none min-h-[80px] max-h-[120px] bg-transparent"
             style={{ overflowY: 'auto' }}
-            disabled={loading}
+            disabled={loading || sessionLoading}
           />
           
           {/* Controls inside the input box */}
@@ -204,7 +288,7 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
               variant="default"
               size="sm"
               onClick={sendMessage}
-              disabled={loading || !input.trim()}
+              disabled={loading || sessionLoading || !input.trim()}
               className="w-6 h-6 p-0 bg-black hover:bg-gray-800 text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-100"
             >
               <Send className="w-3 h-3 text-white" />

@@ -18,7 +18,6 @@ interface FileNode {
 interface FileBrowserProps {
   onFileSelect: (file: FileNode) => void
   selectedFile?: FileNode | null
-  onOpenAIChat?: (type: 'file' | 'folder', path: string) => void
 }
 
 export interface FileBrowserRef {
@@ -28,7 +27,7 @@ export interface FileBrowserRef {
 type SortBy = 'name' | 'size' | 'date' | 'type'
 type SortOrder = 'asc' | 'desc'
 
-const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(({ onFileSelect, selectedFile, onOpenAIChat }, ref) => {
+const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(({ onFileSelect, selectedFile }, ref) => {
   const [files, setFiles] = useState<FileNode | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -484,20 +483,6 @@ console.log('Hello from ${fileName}!');`
               {(node.size / 1024).toFixed(1)}KB
             </span>
           )}
-          
-          {/* AI Chat button */}
-          {onOpenAIChat && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onOpenAIChat(isFolder ? 'folder' : 'file', node.path)
-              }}
-              className="p-1 hover:bg-purple-100 rounded text-purple-600"
-              title="Open AI Chat"
-            >
-              🤖
-            </button>
-          )}
         </div>
 
         {/* Render children if folder is expanded */}
@@ -576,18 +561,40 @@ console.log('Hello from ${fileName}!');`
           
           {!loading && !error && files && files.children && (
             <>
-              {files.children.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  <div className="mb-2">📭</div>
-                  <div className="text-sm">No files found</div>
-                  <div className="text-xs mt-1">Right-click to create your first file</div>
-                </div>
-              ) : (
-                sortNodes(files.children).map(node => {
-                  const filtered = filterNodes(node)
-                  return filtered ? renderNode(filtered) : null
-                })
-              )}
+              {/* Root / folder - acts like an expanded folder */}
+              <div
+                className={`
+                  flex items-center gap-2 px-2 py-1.5 cursor-pointer
+                  hover:bg-gray-100 transition-colors
+                  ${selectedFile?.path === '/' ? 'bg-blue-50 border-l-2 border-blue-500' : ''}
+                `}
+                onClick={() => onFileSelect({ name: '/', type: 'folder', path: '/' })}
+                onContextMenu={(e) => {
+                  e.stopPropagation()
+                  handleContextMenu(e, { name: '/', type: 'folder', path: '/' }, true)
+                }}
+              >
+                <span className="text-gray-600">📂</span>
+                <span className={`flex-1 text-sm ${selectedFile?.path === '/' ? 'font-semibold' : ''}`}>
+                  /
+                </span>
+              </div>
+              
+              {/* Contents of root - indented like folder contents */}
+              <div style={{ paddingLeft: '20px' }}>
+                {files.children.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    <div className="mb-2">📭</div>
+                    <div className="text-sm">No files found</div>
+                    <div className="text-xs mt-1">Right-click to create your first file</div>
+                  </div>
+                ) : (
+                  sortNodes(files.children).map(node => {
+                    const filtered = filterNodes(node)
+                    return filtered ? renderNode(filtered) : null
+                  })
+                )}
+              </div>
             </>
           )}
         </div>

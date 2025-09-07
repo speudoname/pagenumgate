@@ -24,15 +24,7 @@ export default function SettingsPage() {
         const userData = await userResponse.json()
         setUser(userData)
         
-        // Only load API key info if user is admin
-        if (userData.role === 'admin' || userData.role === 'owner') {
-          const keyResponse = await fetch(getApiUrl('/api/ai/api-key'))
-          if (keyResponse.ok) {
-            const keyData = await keyResponse.json()
-            setHasKey(keyData.hasKey)
-            setKeyInfo(keyData.keyInfo)
-          }
-        }
+        // API key is now managed via environment variable only
       }
     } catch (error) {
       console.error('Error loading settings:', error)
@@ -221,7 +213,7 @@ export default function SettingsPage() {
           <h2 className="text-xl font-semibold mb-4">About AI Assistant</h2>
           <div className="prose prose-sm text-gray-600">
             <p>
-              The AI Assistant uses Claude Sonnet 4 and Claude Opus 4.1 to help you manage files and folders
+              The AI Assistant uses Claude Opus 4.1 to help you manage files and folders
               in your workspace. It can:
             </p>
             <ul>

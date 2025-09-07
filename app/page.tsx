@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import FileBrowser, { FileBrowserRef } from '@/components/FileBrowser'
 import FileEditor from '@/components/FileEditor'
-import AIChat from '@/components/AIChat'
+import SimpleAIChat from '@/components/SimpleAIChat'
 import { getApiUrl } from '@/lib/utils/api'
 
 interface UserInfo {
@@ -26,8 +26,9 @@ export default function PageBuilderDashboard() {
   const [user, setUser] = useState<UserInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedFile, setSelectedFile] = useState<FileNode | null>(null)
-  const [showAIChat, setShowAIChat] = useState(false)
-  const [aiChatContext, setAIChatContext] = useState<{ type: 'file' | 'folder', path: string } | null>(null)
+  const [aiChatCollapsed, setAiChatCollapsed] = useState(false)
+  const [fileBrowserCollapsed, setFileBrowserCollapsed] = useState(false)
+  const [currentFolder, setCurrentFolder] = useState<string>('/')
   const fileBrowserRef = useRef<FileBrowserRef>(null)
 
   useEffect(() => {
@@ -47,9 +48,23 @@ export default function PageBuilderDashboard() {
     loadUser()
   }, [])
 
+  // Track current folder from selected file
+  useEffect(() => {
+    if (selectedFile) {
+      if (selectedFile.type === 'folder') {
+        setCurrentFolder(selectedFile.path)
+      } else {
+        // Extract folder from file path
+        const folderPath = selectedFile.path.substring(0, selectedFile.path.lastIndexOf('/')) || '/'
+        setCurrentFolder(folderPath)
+      }
+    }
+  }, [selectedFile])
+
   const handleBackToGateway = () => {
     window.location.href = '/dashboard'
   }
+
 
   if (loading) {
     return (
@@ -75,21 +90,6 @@ export default function PageBuilderDashboard() {
     )
   }
 
-  const openAIChat = (type: 'file' | 'folder', path: string) => {
-    setAIChatContext({ type, path })
-    setShowAIChat(true)
-  }
-  
-  // Auto-update AI chat context when file selection changes
-  useEffect(() => {
-    if (showAIChat && selectedFile) {
-      setAIChatContext({ 
-        type: selectedFile.type === 'folder' ? 'folder' : 'file', 
-        path: selectedFile.path 
-      })
-    }
-  }, [selectedFile, showAIChat])
-
   const handleFilesChanged = async () => {
     // Refresh the file browser when AI makes changes
     if (fileBrowserRef.current) {
@@ -104,24 +104,10 @@ export default function PageBuilderDashboard() {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold">Page Builder</h1>
-              <p className="text-sm text-gray-600">AI-Powered File System Manager</p>
+              <h1 className="text-2xl font-bold">AI Page Builder</h1>
+              <p className="text-sm text-gray-600">Build static pages with AI assistance</p>
             </div>
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => {
-                  // Use current selected file/folder context, or root if nothing selected
-                  if (selectedFile) {
-                    openAIChat(selectedFile.type === 'folder' ? 'folder' : 'file', selectedFile.path)
-                  } else {
-                    openAIChat('folder', '/')
-                  }
-                }}
-                className="px-3 py-1.5 border border-purple-500 text-sm font-medium rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700"
-                title={selectedFile ? `AI Chat for ${selectedFile.path}` : 'AI Chat (root folder)'}
-              >
-                🤖 AI Assistant {selectedFile && `(${selectedFile.name})`}
-              </button>
               <div className="text-right">
                 <div className="text-sm text-gray-600">{user.email}</div>
                 {user.tenant_id && (
@@ -141,40 +127,63 @@ export default function PageBuilderDashboard() {
 
       {/* Main Content - File System */}
       <div className="flex-1 flex overflow-hidden min-h-0">
-        {/* Left Sidebar - File Browser */}
-        <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
-          <div className="border-b border-gray-200 px-4 py-3">
-            <h2 className="font-semibold text-gray-900">Files</h2>
-            <p className="text-xs text-gray-500 mt-1">Your tenant workspace</p>
+        {/* Left Sidebar - File Browser with collapse */}
+        {fileBrowserCollapsed ? (
+          <div className="w-12 h-full bg-white border-r flex flex-col items-center py-4">
+            <button
+              onClick={() => setFileBrowserCollapsed(false)}
+              className="text-gray-500 hover:text-gray-700 mb-4"
+              title="Expand File Browser"
+            >
+              ▶
+            </button>
+            <div className="writing-mode-vertical text-xs text-gray-500" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+              Files
+            </div>
           </div>
-          <FileBrowser 
-            ref={fileBrowserRef}
-            onFileSelect={setSelectedFile}
-            selectedFile={selectedFile}
-            onOpenAIChat={openAIChat}
-          />
-        </div>
+        ) : (
+          <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+            <div className="border-b border-gray-200 px-4 py-3 flex justify-between items-center">
+              <div>
+                <h2 className="font-semibold text-gray-900">Files</h2>
+                <p className="text-xs text-gray-500 mt-1">Your workspace</p>
+              </div>
+              <button
+                onClick={() => setFileBrowserCollapsed(true)}
+                className="text-gray-500 hover:text-gray-700"
+                title="Collapse File Browser"
+              >
+                ◀
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <FileBrowser 
+                ref={fileBrowserRef}
+                onFileSelect={setSelectedFile}
+                selectedFile={selectedFile}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Middle - File Editor */}
         <div className="flex-1 min-h-0 flex flex-col">
           <FileEditor 
-            file={selectedFile} 
-            onOpenAIChat={openAIChat}
+            file={selectedFile}
           />
         </div>
 
-        {/* Right Sidebar - AI Chat (when open) */}
-        {showAIChat && aiChatContext && (
-          <div className="w-96 h-full border-l border-gray-200">
-            <AIChat
-              contextType={aiChatContext.type}
-              contextPath={aiChatContext.path}
-              tenantId={user.tenant_id}
-              onClose={() => setShowAIChat(false)}
-              onFilesChanged={handleFilesChanged}
-            />
-          </div>
-        )}
+        {/* Right Sidebar - AI Assistant (always visible, can collapse) */}
+        <div className={`${aiChatCollapsed ? 'w-12' : 'w-96'} h-full border-l border-gray-200 transition-all duration-300`}>
+          <SimpleAIChat
+            currentFolder={selectedFile ? (selectedFile.type === 'folder' ? selectedFile.path : selectedFile.path.substring(0, selectedFile.path.lastIndexOf('/')) || '/') : '/'}
+            selectedFile={selectedFile}
+            onClose={() => {}}
+            onFilesChanged={handleFilesChanged}
+            isCollapsed={aiChatCollapsed}
+            onToggleCollapse={() => setAiChatCollapsed(!aiChatCollapsed)}
+          />
+        </div>
       </div>
 
       {/* Status Bar */}

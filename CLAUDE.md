@@ -1,5 +1,31 @@
 # PageNumGate - Part of NUM Gate Platform
 
+## 🎯 FUNDAMENTAL PURPOSE: STATIC HTML PAGE BUILDER
+**THIS IS A STATIC HTML PAGE BUILDER, NOT A REACT APP!**
+
+### What We're Building:
+- **Output**: Pure static HTML/CSS/JS files (NO React, NO frameworks)
+- **Storage**: HTML files in Vercel Blob Storage
+- **Serving**: Static HTML at `tenant.domain.com/page.html`
+- **Admin Tool**: React (just for editing interface, NOT the output)
+
+### Core Simplicity:
+```
+User creates HTML → Store in Blob → Serve as static file
+```
+
+### What AI Should Focus On:
+1. **Creating beautiful HTML pages** with inline CSS
+2. **Simple file operations** (create, edit, delete HTML files)
+3. **Basic folder structure** for organization
+4. **NO complex state**, NO React components in output
+
+### Remember:
+- We're building **websites**, not web apps
+- Think **Squarespace/Wix**, not Next.js
+- Output is **static HTML** that works anywhere
+- Keep it SIMPLE - it's just HTML files!
+
 ## 🚨🚨🚨 CRITICAL: CLAUDE 4 AND OPUS 4.1 ONLY - NEVER CHANGE THIS! 🚨🚨🚨
 
 ### ⚠️ ABSOLUTE REQUIREMENT - NEVER EVER CHANGE THESE MODEL IDS ⚠️
@@ -39,6 +65,21 @@ const CORRECT_MODELS = {
 - "claude-opus-4-1-20250805" for Opus
 
 **THE USER HAS BEEN EXTREMELY CLEAR: USE CLAUDE 4 AND OPUS 4.1 ONLY!**
+
+## 🚨 AI ASSISTANT IMPLEMENTATION INSTRUCTIONS 🚨
+
+### CURRENT AI IMPLEMENTATION STATUS
+The AI assistant uses 5 simple tools for static HTML page building:
+1. **create_file** - Creates new HTML/CSS/JS files
+2. **edit_file** - Modifies existing files  
+3. **read_file** - Reads file contents
+4. **delete_file** - Deletes files or folders
+5. **list_files** - Lists folder contents
+
+### CRITICAL: ALWAYS USE CLAUDE OPUS 4.1
+- Model ID: `claude-opus-4-1-20250805`
+- This is the ONLY model that should be used in `/app/api/ai/chat/route.ts`
+- The AI knows it's building static HTML pages, NOT React components
 
 ## 🚨 CRITICAL: SMART TOOL PARAMETER EXTRACTION - NEVER FORGET THIS! 🚨
 

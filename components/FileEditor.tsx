@@ -3,7 +3,7 @@
 import { useState, useRef, memo, useCallback } from 'react'
 import { FileNode } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { RotateCcw, Smartphone, Monitor, Copy, FileText, Globe } from 'lucide-react'
+import { RotateCcw, Smartphone, Monitor, Copy, FileText, Globe, Maximize2 } from 'lucide-react'
 import FileEditorContent, { FileEditorContentRef } from './FileEditorContent'
 
 // Memoized header component to prevent visual refresh
@@ -18,7 +18,8 @@ const FileEditorHeader = memo(({
   onPreview, 
   onSave, 
   saving,
-  onSetPreviewMode
+  onSetPreviewMode,
+  onToggleFullScreen
 }: {
   file: FileNode | null
   hasChanges: boolean
@@ -31,6 +32,7 @@ const FileEditorHeader = memo(({
   onSave: () => void
   saving: boolean
   onSetPreviewMode: (mode: 'mobile' | 'desktop') => void
+  onToggleFullScreen: () => void
 }) => {
   if (!file) return null
 
@@ -56,8 +58,8 @@ const FileEditorHeader = memo(({
       </div>
       
       <div className="flex items-center gap-2">
-        {/* Mobile/Desktop buttons - always reserved space */}
-        <div className="flex items-center gap-1 w-20">
+        {/* Mobile/Desktop/Fullscreen buttons - always reserved space */}
+        <div className="flex items-center gap-1">
           {preview && (
             <>
               <Button
@@ -77,6 +79,15 @@ const FileEditorHeader = memo(({
                 className="w-6 h-6 p-0"
               >
                 <Monitor className="w-3 h-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onToggleFullScreen}
+                title="Toggle Full Screen"
+                className="w-6 h-6 p-0"
+              >
+                <Maximize2 className="w-3 h-3" />
               </Button>
             </>
           )}
@@ -142,9 +153,10 @@ FileEditorHeader.displayName = 'FileEditorHeader'
 
 interface FileEditorProps {
   file: FileNode | null
+  onToggleFullScreen?: () => void
 }
 
-export default function FileEditor({ file }: FileEditorProps) {
+export default function FileEditor({ file, onToggleFullScreen }: FileEditorProps) {
   const [hasChanges, setHasChanges] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -211,6 +223,7 @@ export default function FileEditor({ file }: FileEditorProps) {
         onSave={handleSave}
         saving={saving}
         onSetPreviewMode={handleSetPreviewMode}
+        onToggleFullScreen={onToggleFullScreen || (() => {})}
       />
 
 

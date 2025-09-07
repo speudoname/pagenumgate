@@ -62,6 +62,19 @@ export default function PageBuilderDashboard() {
     }
   }
 
+  const handleToggleFullScreen = useCallback(() => {
+    // Toggle both sidebars at once
+    if (!fileBrowserCollapsed || !aiChatCollapsed) {
+      // If either sidebar is open, collapse both
+      setFileBrowserCollapsed(true)
+      setAiChatCollapsed(true)
+    } else {
+      // If both are collapsed, expand both
+      setFileBrowserCollapsed(false)
+      setAiChatCollapsed(false)
+    }
+  }, [fileBrowserCollapsed, aiChatCollapsed])
+
   // Auto-select root directory on page load
   useEffect(() => {
     if (user && !selectedFile) {
@@ -210,6 +223,7 @@ export default function PageBuilderDashboard() {
         <div className="flex-1 min-h-0 flex flex-col border-l-2 border-r-2 border-black">
           <FileEditor 
             file={selectedFile}
+            onToggleFullScreen={handleToggleFullScreen}
           />
         </div>
 

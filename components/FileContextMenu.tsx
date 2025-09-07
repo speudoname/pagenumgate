@@ -11,6 +11,7 @@ interface FileContextMenuProps {
   onRename?: () => void
   onDelete?: () => void
   onDuplicate?: () => void
+  onMove?: () => void
   onPublish?: () => void
   onUnpublish?: () => void
   isRoot?: boolean
@@ -28,6 +29,7 @@ export default function FileContextMenu({
   onRename,
   onDelete,
   onDuplicate,
+  onMove,
   onPublish,
   onUnpublish,
   isRoot = false,
@@ -115,6 +117,19 @@ export default function FileContextMenu({
         >
           <span>📋</span>
           <span>Duplicate</span>
+        </button>
+      )}
+
+      {!isRoot && onMove && (
+        <button
+          onClick={() => {
+            onMove()
+            onClose()
+          }}
+          className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center gap-2 text-sm"
+        >
+          <span>📦</span>
+          <span>Move to...</span>
         </button>
       )}
 

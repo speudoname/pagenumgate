@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import FileBrowser, { FileBrowserRef } from '@/components/FileBrowser'
 import FileEditor from '@/components/FileEditor'
 import SimpleAIChat from '@/components/SimpleAIChat'
@@ -29,6 +29,9 @@ export default function PageBuilderDashboard() {
   const [aiChatCollapsed, setAiChatCollapsed] = useState(false)
   const [fileBrowserCollapsed, setFileBrowserCollapsed] = useState(false)
   const [currentFolder, setCurrentFolder] = useState<string>('/')
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(320)
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(384)
+  const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null)
   const fileBrowserRef = useRef<FileBrowserRef>(null)
 
   useEffect(() => {
@@ -65,7 +68,47 @@ export default function PageBuilderDashboard() {
     window.location.href = '/dashboard'
   }
 
+  const handleFilesChanged = async () => {
+    // Refresh the file browser when AI makes changes
+    if (fileBrowserRef.current) {
+      await fileBrowserRef.current.refreshFiles()
+    }
+  }
 
+  const handleMouseDown = (side: 'left' | 'right') => (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(side)
+  }
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return
+    
+    if (isResizing === 'left') {
+      const newWidth = Math.max(200, Math.min(600, e.clientX))
+      setLeftSidebarWidth(newWidth)
+    } else if (isResizing === 'right') {
+      const newWidth = Math.max(200, Math.min(600, window.innerWidth - e.clientX))
+      setRightSidebarWidth(newWidth)
+    }
+  }, [isResizing])
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(null)
+  }, [])
+
+  // Mouse event listeners for resize - MUST be before any early returns
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp])
+
+  // Early returns AFTER all hooks
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -90,33 +133,24 @@ export default function PageBuilderDashboard() {
     )
   }
 
-  const handleFilesChanged = async () => {
-    // Refresh the file browser when AI makes changes
-    if (fileBrowserRef.current) {
-      await fileBrowserRef.current.refreshFiles()
-    }
-  }
-
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-white border-b-2 border-black flex-shrink-0">
+      <header className="bg-white border-b border-gray-200 flex-shrink-0">
         <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold">AI Page Builder</h1>
-              <p className="text-sm text-gray-600">Build static pages with AI assistance</p>
+          <div className="flex justify-between items-center py-2">
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-bold">AI Page Builder</h1>
+              <span className="text-xs text-gray-500">•</span>
+              <span className="text-xs text-gray-600">Build static pages with AI assistance</span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <div className="text-right">
-                <div className="text-sm text-gray-600">{user.email}</div>
-                {user.tenant_id && (
-                  <div className="text-xs text-gray-500">Tenant: {user.tenant_id.slice(0, 8)}...</div>
-                )}
+                <div className="text-xs text-gray-600">{user.email}</div>
               </div>
               <button
                 onClick={handleBackToGateway}
-                className="px-4 py-2 border-2 border-black text-sm font-medium rounded-md bg-white hover:bg-gray-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all"
+                className="px-3 py-1.5 border border-gray-300 text-xs font-medium rounded hover:bg-gray-50 transition-colors"
               >
                 Back to Gateway
               </button>
@@ -142,7 +176,7 @@ export default function PageBuilderDashboard() {
             </div>
           </div>
         ) : (
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+          <div className="bg-white border-r border-gray-200 flex flex-col overflow-hidden" style={{ width: leftSidebarWidth }}>
             <div className="border-b border-gray-200 px-4 py-3 flex justify-between items-center">
               <div>
                 <h2 className="font-semibold text-gray-900">Files</h2>
@@ -166,6 +200,14 @@ export default function PageBuilderDashboard() {
           </div>
         )}
 
+        {/* Left Resize Handle */}
+        {!fileBrowserCollapsed && (
+          <div
+            className="w-1 bg-gray-200 hover:bg-gray-400 cursor-col-resize transition-colors"
+            onMouseDown={handleMouseDown('left')}
+          />
+        )}
+
         {/* Middle - File Editor */}
         <div className="flex-1 min-h-0 flex flex-col">
           <FileEditor 
@@ -173,8 +215,16 @@ export default function PageBuilderDashboard() {
           />
         </div>
 
+        {/* Right Resize Handle */}
+        {!aiChatCollapsed && (
+          <div
+            className="w-1 bg-gray-200 hover:bg-gray-400 cursor-col-resize transition-colors"
+            onMouseDown={handleMouseDown('right')}
+          />
+        )}
+
         {/* Right Sidebar - AI Assistant (always visible, can collapse) */}
-        <div className={`${aiChatCollapsed ? 'w-12' : 'w-96'} h-full border-l border-gray-200 transition-all duration-300`}>
+        <div className={`${aiChatCollapsed ? 'w-12' : ''} h-full border-l border-gray-200 transition-all duration-300`} style={!aiChatCollapsed ? { width: rightSidebarWidth } : {}}>
           <SimpleAIChat
             currentFolder={selectedFile ? (selectedFile.type === 'folder' ? selectedFile.path : selectedFile.path.substring(0, selectedFile.path.lastIndexOf('/')) || '/') : '/'}
             selectedFile={selectedFile}

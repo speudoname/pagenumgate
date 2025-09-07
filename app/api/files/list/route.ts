@@ -32,6 +32,13 @@ export async function GET(request: NextRequest) {
     blobs.forEach(blob => {
       // Remove tenant ID prefix from pathname
       const relativePath = blob.pathname.replace(`${tenantId}/`, '')
+      
+      // Filter out hidden files (starting with .)
+      const fileName = relativePath.split('/').pop() || ''
+      if (fileName.startsWith('.')) {
+        return // Skip hidden files
+      }
+      
       const parts = relativePath.split('/')
       
       let currentLevel = fileTree.children
@@ -45,7 +52,7 @@ export async function GET(request: NextRequest) {
           currentLevel.push({
             name: part,
             type: 'file',
-            path: blob.pathname,
+            path: relativePath,  // Use relative path without tenant ID
             url: blob.url,
             size: blob.size,
             uploadedAt: blob.uploadedAt

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { list, copy, del } from '@vercel/blob'
+import { put, del, list } from '@vercel/blob'
 import { logger } from '@/lib/utils/logger'
 
 export async function POST(request: NextRequest) {
@@ -14,67 +14,103 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { sourcePath, targetPath } = await request.json()
+    const { sourcePath, targetFolder, isFolder } = await request.json()
 
-    if (!sourcePath || !targetPath) {
+    if (!sourcePath || targetFolder === undefined) {
       return NextResponse.json(
-        { error: 'Source and target paths are required' },
+        { error: 'Source path and target folder are required' },
         { status: 400 }
       )
     }
 
-    // Security: Ensure paths belong to this tenant
-    const fullSourcePath = sourcePath.startsWith(`${tenantId}/`) ? sourcePath : `${tenantId}/${sourcePath}`
-    const fullTargetPath = targetPath.startsWith(`${tenantId}/`) ? targetPath : `${tenantId}/${targetPath}`
+    logger.info('Moving file/folder:', { sourcePath, targetFolder, isFolder })
+
+    // Extract filename from source path
+    const fileName = sourcePath.split('/').pop() || ''
     
-    if (!fullSourcePath.startsWith(`${tenantId}/`) || !fullTargetPath.startsWith(`${tenantId}/`)) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
-    }
+    // Construct target path
+    const targetPath = targetFolder === '/' || targetFolder === '' 
+      ? fileName 
+      : `${targetFolder}/${fileName}`
 
-    // Find the source file
-    const { blobs: sourceBlobs } = await list({
-      prefix: fullSourcePath,
-      limit: 1
-    })
+    // Construct full paths with tenant ID
+    const fullSourcePath = `${tenantId}/${sourcePath}`
+    const fullTargetPath = `${tenantId}/${targetPath}`
 
-    if (sourceBlobs.length === 0) {
-      return NextResponse.json(
-        { error: 'Source file not found' },
-        { status: 404 }
-      )
-    }
+    if (isFolder) {
+      // For folders, we need to move all files within the folder
+      const { blobs } = await list({
+        prefix: fullSourcePath
+      })
 
-    const sourceBlob = sourceBlobs[0]
+      logger.info(`Found ${blobs.length} files in folder to move`)
 
-    // Copy to new location
-    await copy(sourceBlob.url, fullTargetPath, { access: 'public' })
-    
-    // Delete original
-    await del(sourceBlob.url)
+      // Process each file
+      for (const blob of blobs) {
+        // Calculate new path
+        const relativePath = blob.pathname.replace(fullSourcePath, '')
+        const newPath = `${fullTargetPath}${relativePath}`
+        
+        logger.info(`Moving ${blob.pathname} to ${newPath}`)
+        
+        // Fetch the content
+        const response = await fetch(blob.url)
+        const content = await response.blob()
+        
+        // Upload to new location
+        await put(newPath, content, {
+          access: 'public',
+          contentType: response.headers.get('content-type') || 'application/octet-stream',
+          addRandomSuffix: false
+        })
+        
+        // Delete the original
+        await del(blob.url)
+      }
+      
+      logger.info('Folder moved successfully')
+    } else {
+      // For single files, find and move the file
+      const { blobs } = await list({
+        prefix: fullSourcePath,
+        limit: 1
+      })
 
-    // Determine if this is a publish or unpublish action
-    const isPublishing = sourcePath.includes('/unpublished/') && !targetPath.includes('/unpublished/')
-    const isUnpublishing = !sourcePath.includes('/unpublished/') && targetPath.includes('/unpublished/')
+      if (blobs.length === 0) {
+        return NextResponse.json(
+          { error: 'Source file not found' },
+          { status: 404 }
+        )
+      }
 
-    let message = 'File moved successfully'
-    if (isPublishing) {
-      message = 'File published successfully'
-    } else if (isUnpublishing) {
-      message = 'File unpublished successfully'
+      const sourceBlob = blobs[0]
+      
+      // Fetch the content
+      const response = await fetch(sourceBlob.url)
+      const content = await response.blob()
+      
+      // Upload to new location
+      await put(fullTargetPath, content, {
+        access: 'public',
+        contentType: response.headers.get('content-type') || 'application/octet-stream',
+        addRandomSuffix: false
+      })
+      
+      // Delete the original
+      await del(sourceBlob.url)
+      
+      logger.info('File moved successfully')
     }
 
     return NextResponse.json({
       success: true,
-      message,
-      newPath: fullTargetPath.replace(`${tenantId}/`, '')
+      message: `${isFolder ? 'Folder' : 'File'} moved successfully`,
+      newPath: targetPath
     })
   } catch (error) {
-    logger.error('Move file error:', error)
+    logger.error('Move file/folder error:', error)
     return NextResponse.json(
-      { error: 'Failed to move file' },
+      { error: 'Failed to move file/folder' },
       { status: 500 }
     )
   }

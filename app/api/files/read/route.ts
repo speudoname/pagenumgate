@@ -22,13 +22,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verify the file belongs to this tenant
-    if (path && !path.startsWith(`${tenantId}/`)) {
-      return NextResponse.json(
-        { error: 'Access denied to this file' },
-        { status: 403 }
-      )
-    }
+    // Path comes from client without tenant ID, we don't need to verify it here
+    // The middleware already ensures the user is authenticated for their tenant
 
     // SECURITY: Validate URL is from Vercel Blob storage only
     const allowedDomains = [

@@ -26,8 +26,12 @@ export default function FileEditor({ file }: FileEditorProps) {
   const [lastRefresh, setLastRefresh] = useState(Date.now())
 
   useEffect(() => {
-    if (file && file.type === 'file') {
-      loadFileContent()
+    if (file) {
+      if (file.type === 'file') {
+        loadFileContent()
+      } else if (file.type === 'folder') {
+        loadFolderNotes()
+      }
     } else {
       setContent('')
       setOriginalContent('')
@@ -67,6 +71,42 @@ export default function FileEditor({ file }: FileEditorProps) {
     }
   }
 
+  const loadFolderNotes = async () => {
+    if (!file) return
+    
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // Use the read-folder-notes endpoint which looks for .notes.md in the folder
+      const notesPath = file.path === '/' ? '.notes.md' : `${file.path}/.notes.md`
+      
+      const response = await fetch(getApiUrl('/api/files/read-folder-notes'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          path: notesPath  // Send the full path to .notes.md
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setContent(data.content || '')
+        setOriginalContent(data.content || '')
+      } else {
+        // No notes file exists yet, start with empty content
+        setContent('')
+        setOriginalContent('')
+      }
+    } catch (err) {
+      // No notes file exists yet, that's ok - start with empty content
+      setContent('')
+      setOriginalContent('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const saveFile = async () => {
     if (!file) return
     
@@ -74,26 +114,47 @@ export default function FileEditor({ file }: FileEditorProps) {
       setSaving(true)
       setError(null)
       
-      const response = await fetch(getApiUrl('/api/files/save'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: file.path,
-          content,
-          contentType: file.name.endsWith('.css') ? 'text/css' : 
-                       file.name.endsWith('.js') ? 'application/javascript' : 
-                       'text/html'
+      // For folders, save as .notes.md
+      if (file.type === 'folder') {
+        const notesPath = file.path === '/' ? '.notes.md' : `${file.path}/.notes.md`
+        
+        const response = await fetch(getApiUrl('/api/files/save'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: notesPath,
+            content,
+            contentType: 'text/markdown'
+          })
         })
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to save file')
+        
+        if (!response.ok) {
+          throw new Error('Failed to save folder notes')
+        }
+      } else {
+        // Regular file save
+        const response = await fetch(getApiUrl('/api/files/save'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: file.path,
+            content,
+            contentType: file.name.endsWith('.css') ? 'text/css' : 
+                         file.name.endsWith('.js') ? 'application/javascript' : 
+                         file.name.endsWith('.md') ? 'text/markdown' :
+                         'text/html'
+          })
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to save file')
+        }
       }
       
       setOriginalContent(content)
-      alert('File saved successfully!')
+      alert('Saved successfully!')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save file')
+      setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
@@ -125,8 +186,12 @@ export default function FileEditor({ file }: FileEditorProps) {
       {/* Header */}
       <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Editing:</span>
-          <span className="font-semibold">{file.name}</span>
+          <span className="text-sm text-gray-500">
+            {file.type === 'folder' ? 'Folder Notes:' : 'Editing:'}
+          </span>
+          <span className="font-semibold">
+            {file.type === 'folder' ? `${file.name || '/'} (notes)` : file.name}
+          </span>
           {hasChanges && (
             <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
               Modified
@@ -141,9 +206,9 @@ export default function FileEditor({ file }: FileEditorProps) {
         
         <div className="flex items-center gap-2">
           <button
-            onClick={loadFileContent}
+            onClick={() => file.type === 'folder' ? loadFolderNotes() : loadFileContent()}
             className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
-            title="Refresh file content"
+            title={file.type === 'folder' ? "Refresh folder notes" : "Refresh file content"}
           >
             🔄 Refresh
           </button>
@@ -180,48 +245,6 @@ export default function FileEditor({ file }: FileEditorProps) {
         </div>
       </div>
 
-      {/* File Properties - shown for HTML files */}
-      {file.name.endsWith('.html') && (
-        <div className="bg-gray-50 border-b px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-medium text-gray-900">File Properties</h3>
-              <div className="mt-1 text-xs text-gray-600">
-                <div>Path: <code className="bg-gray-100 px-1 py-0.5 rounded">{file.path}</code></div>
-                {file.isPublished ? (
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="text-green-600">🌐 Published</span>
-                    {file.publicUrl && (
-                      <>
-                        <span>•</span>
-                        <a 
-                          href={file.publicUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 underline"
-                        >
-                          View Live
-                        </a>
-                        <span>•</span>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(file.publicUrl!)}
-                          className="text-blue-600 hover:text-blue-800 underline"
-                        >
-                          Copy URL
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-1 text-gray-500">
-                    📄 Not published (right-click file to publish)
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Error message */}
       {error && (

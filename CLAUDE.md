@@ -252,14 +252,26 @@ blob-storage/
 ### File Structure in Blob
 ```
 {tenant_id}/
-  ├── homepage/
-  │   └── index.html
-  ├── pages/
-  │   ├── about.html
-  │   └── contact.html
+  ├── index.html           # Root pages - published and visible
+  ├── about.html          
+  ├── contact.html
+  ├── unpublished/        # Unpublished pages - not served by NumGate
+  │   ├── draft.html
+  │   └── work-in-progress.html
   └── assets/
       └── styles.css
 ```
+
+### Publishing Mechanism
+
+**IMPORTANT: Publishing is determined by file location, NOT by toggles or flags**
+
+- **Published Files**: Any file in the root directory or regular folders is automatically published and served by NumGate
+- **Unpublished Files**: Files inside the `unpublished/` folder are NOT served by NumGate
+- **How to Publish**: Move file OUT of the `unpublished/` folder (right-click → Publish in UI)
+- **How to Unpublish**: Move file INTO the `unpublished/` folder (right-click → Unpublish in UI)
+
+**There are NO publish/unpublish toggles or database flags** - it's purely based on file location. NumGate automatically filters out any files in `unpublished/` folders when serving pages.
 
 ### Key Dependencies
 - Next.js 15.5.2 (must stay aligned with NUM Gate)

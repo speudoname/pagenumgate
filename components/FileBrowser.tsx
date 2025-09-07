@@ -4,6 +4,7 @@ import { useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { getApiUrl } from '@/lib/utils/api'
 import FileContextMenu from './FileContextMenu'
 import FileModal from './FileModal'
+import MoveModal from './MoveModal'
 
 interface FileNode {
   name: string
@@ -46,9 +47,13 @@ const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(({ onFileSelect
   
   // Modal state
   const [modal, setModal] = useState<{
-    type: 'newFile' | 'newFolder' | 'rename' | 'delete' | 'fileType' | null
+    type: 'newFile' | 'newFolder' | 'rename' | 'delete' | 'fileType' | 'move' | null
     node?: FileNode
   }>({ type: null })
+  
+  // Drag and drop state
+  const [draggedItem, setDraggedItem] = useState<FileNode | null>(null)
+  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null)
 
   const loadFiles = async () => {
     try {
@@ -165,6 +170,11 @@ console.log('Hello from ${fileName}!');`
         ? `${parentPath}/${folderName}/index.html` 
         : `${folderName}/index.html`
       
+      // Create folder notes file
+      const notesPath = parentPath
+        ? `${parentPath}/${folderName}/.folder-notes.md`
+        : `${folderName}/.folder-notes.md`
+      
       // Also create an unpublished subfolder with a placeholder file
       const unpublishedPath = parentPath
         ? `${parentPath}/${folderName}/unpublished/draft.html`
@@ -214,6 +224,20 @@ console.log('Hello from ${fileName}!');`
 </body>
 </html>`
 
+      // Folder notes content
+      const notesContent = `# ${folderName}
+
+## Overview
+This folder contains pages and assets for the ${folderName} section.
+
+## Structure
+- \`index.html\` - Main page for this section
+- \`unpublished/\` - Draft pages not yet published
+
+## Notes
+Add your notes about this folder here...
+`
+
       // Draft template for unpublished folder
       const draftContent = `<!DOCTYPE html>
 <html lang="en">
@@ -240,6 +264,17 @@ console.log('Hello from ${fileName}!');`
       })
       
       if (response.ok) {
+        // Create folder notes file
+        await fetch(getApiUrl('/api/files/save'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            path: notesPath,
+            content: notesContent,
+            contentType: 'text/markdown'
+          })
+        })
+        
         // Create the unpublished folder with a draft file
         await fetch(getApiUrl('/api/files/save'), {
           method: 'POST',
@@ -380,6 +415,82 @@ console.log('Hello from ${fileName}!');`
     }
   }
 
+  const handleMove = async (sourcePath: string, targetFolder: string, isFolder: boolean = false) => {
+    if (!sourcePath || targetFolder === undefined) {
+      console.error('Source path and target folder are required')
+      return
+    }
+    
+    try {
+      const response = await fetch(getApiUrl('/api/files/move'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourcePath,
+          targetFolder,  // Send targetFolder as expected by API
+          isFolder      // Include isFolder parameter
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        await loadFiles()
+        
+        // Update selected file if it was moved
+        if (selectedFile?.path === sourcePath) {
+          onFileSelect({
+            ...selectedFile,
+            path: data.newPath || targetPath
+          })
+        }
+        
+        // Show success feedback
+        console.log(`Successfully moved "${fileName}" to "${targetFolder}"`) 
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to move file')
+      }
+    } catch (error) {
+      console.error('Failed to move:', error)
+      // Show error feedback - you could replace this with a toast notification
+      alert(`Failed to move file: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, node: FileNode) => {
+    setDraggedItem(node)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', node.path)
+  }
+
+  const handleDragOver = (e: React.DragEvent, targetPath?: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverFolder(targetPath || null)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverFolder(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetFolder?: FileNode) => {
+    e.preventDefault()
+    setDragOverFolder(null)
+    
+    if (!draggedItem) return
+    
+    const targetPath = targetFolder?.type === 'folder' ? targetFolder.path : '/'
+    
+    // Don't allow dropping onto itself or its children
+    if (draggedItem.path === targetPath || targetPath.startsWith(draggedItem.path + '/')) {
+      return
+    }
+    
+    handleMove(draggedItem.path, targetPath)
+    setDraggedItem(null)
+  }
+
 
   const sortNodes = (nodes: FileNode[]): FileNode[] => {
     return [...nodes].sort((a, b) => {
@@ -431,24 +542,35 @@ console.log('Hello from ${fileName}!');`
     return null
   }
 
-  const renderNode = (node: FileNode, level: number = 0) => {
+  const renderNode = (node: FileNode, level: number = 0, index: number = 0) => {
     const isFolder = node.type === 'folder'
-    const isExpanded = expandedFolders.has(node.path)
+    const isRoot = node.path === '/' || (node.path === '' && node.name === '/')
+    const isExpanded = isRoot || expandedFolders.has(node.path) // Root is always expanded
     const isSelected = selectedFile?.path === node.path
     const isUnpublishedFolder = isFolder && node.name === 'unpublished'
+    const isFolderNotes = !isFolder && node.name === '.folder-notes.md'
+    const canDrag = !isRoot && (!isFolder || node.name !== 'unpublished')
 
     return (
-      <div key={node.path || node.name}>
+      <div key={`${level}-${index}-${node.type}-${node.path || node.name}`}>
         <div
           className={`
             flex items-center gap-2 px-2 py-1.5 cursor-pointer
             hover:bg-gray-100 transition-colors
             ${isSelected ? 'bg-blue-50 border-l-2 border-blue-500' : ''}
+            ${dragOverFolder === node.path ? 'bg-green-100 border-l-2 border-green-500' : ''}
           `}
           style={{ paddingLeft: `${level * 20 + 8}px` }}
+          draggable={canDrag}
+          onDragStart={(e) => canDrag ? handleDragStart(e, node) : e.preventDefault()}
+          onDragOver={(e) => isFolder ? handleDragOver(e, node.path) : e.preventDefault()}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => isFolder ? handleDrop(e, node) : e.preventDefault()}
           onClick={() => {
             if (isFolder) {
-              toggleFolder(node.path)
+              if (!isRoot) {
+                toggleFolder(node.path)
+              }
               // Also select the folder so chat context is set
               onFileSelect(node)
             } else {
@@ -457,18 +579,20 @@ console.log('Hello from ${fileName}!');`
           }}
           onContextMenu={(e) => {
             e.stopPropagation() // Prevent event bubbling
-            handleContextMenu(e, node, false)
+            handleContextMenu(e, node, isRoot)
           }}
         >
           {/* Icon */}
-          <span className={`${isUnpublishedFolder ? 'text-orange-600' : 'text-gray-600'}`}>
+          <span className={`${isUnpublishedFolder ? 'text-orange-600' : isFolderNotes ? 'text-blue-600' : 'text-gray-600'}`}>
             {isFolder ? (
               isUnpublishedFolder ? '🔒' :
               isExpanded ? '📂' : '📁'
             ) : (
+              isFolderNotes ? '📝' :
               node.name.endsWith('.html') ? '📄' :
               node.name.endsWith('.css') ? '🎨' :
-              node.name.endsWith('.js') ? '⚡' : '📎'
+              node.name.endsWith('.js') ? '⚡' :
+              node.name.endsWith('.md') ? '📋' : '📎'
             )}
           </span>
           
@@ -488,10 +612,15 @@ console.log('Hello from ${fileName}!');`
         {/* Render children if folder is expanded */}
         {isFolder && isExpanded && node.children && (
           <div>
-            {sortNodes(node.children).map(child => {
-              const filtered = filterNodes(child)
-              return filtered ? renderNode(filtered, level + 1) : null
-            })}
+            {node.children.length === 0 && isRoot ? (
+              // Empty state for root folder
+              null // We handle this in the main render now
+            ) : (
+              sortNodes(node.children).map((child, childIndex) => {
+                const filtered = filterNodes(child)
+                return filtered ? renderNode(filtered, level + 1, childIndex) : null
+              })
+            )}
           </div>
         )}
       </div>
@@ -561,40 +690,17 @@ console.log('Hello from ${fileName}!');`
           
           {!loading && !error && files && files.children && (
             <>
-              {/* Root / folder - acts like an expanded folder */}
-              <div
-                className={`
-                  flex items-center gap-2 px-2 py-1.5 cursor-pointer
-                  hover:bg-gray-100 transition-colors
-                  ${selectedFile?.path === '/' ? 'bg-blue-50 border-l-2 border-blue-500' : ''}
-                `}
-                onClick={() => onFileSelect({ name: '/', type: 'folder', path: '/' })}
-                onContextMenu={(e) => {
-                  e.stopPropagation()
-                  handleContextMenu(e, { name: '/', type: 'folder', path: '/' }, true)
-                }}
-              >
-                <span className="text-gray-600">📂</span>
-                <span className={`flex-1 text-sm ${selectedFile?.path === '/' ? 'font-semibold' : ''}`}>
-                  /
-                </span>
-              </div>
+              {/* Render root folder using the same renderNode system */}
+              {renderNode({ name: '/', type: 'folder', path: '/', children: files.children }, 0, 0)}
               
-              {/* Contents of root - indented like folder contents */}
-              <div style={{ paddingLeft: '20px' }}>
-                {files.children.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
-                    <div className="mb-2">📭</div>
-                    <div className="text-sm">No files found</div>
-                    <div className="text-xs mt-1">Right-click to create your first file</div>
-                  </div>
-                ) : (
-                  sortNodes(files.children).map(node => {
-                    const filtered = filterNodes(node)
-                    return filtered ? renderNode(filtered) : null
-                  })
-                )}
-              </div>
+              {/* Show empty state if no files */}
+              {files.children.length === 0 && (
+                <div className="p-4 text-center text-gray-500" style={{ paddingLeft: '28px' }}>
+                  <div className="mb-2">📭</div>
+                  <div className="text-sm">No files found</div>
+                  <div className="text-xs mt-1">Right-click to create your first file</div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -613,6 +719,7 @@ console.log('Hello from ${fileName}!');`
             onRename={shouldShowItemOptions ? () => setModal({ type: 'rename', node: contextMenu.node }) : undefined}
             onDelete={shouldShowItemOptions ? () => setModal({ type: 'delete', node: contextMenu.node }) : undefined}
             onDuplicate={shouldShowItemOptions ? () => handleDuplicate(contextMenu.node!) : undefined}
+            onMove={shouldShowItemOptions ? () => setModal({ type: 'move', node: contextMenu.node }) : undefined}
             onPublish={contextMenu.node?.path.includes('/unpublished/') ? () => handlePublish(contextMenu.node!) : undefined}
             onUnpublish={contextMenu.node && !contextMenu.node.path.includes('/unpublished/') ? () => handleUnpublish(contextMenu.node!) : undefined}
             isRoot={contextMenu.isRoot || false}
@@ -705,6 +812,19 @@ console.log('Hello from ${fileName}!');`
           inputLabel="New name"
           inputPlaceholder={modal.node.name}
           initialValue={modal.node.name.replace(/\.[^/.]+$/, '')} // Remove extension for files
+        />
+      )}
+
+      {modal.type === 'move' && modal.node && (
+        <MoveModal
+          isOpen={true}
+          onClose={() => setModal({ type: null })}
+          onConfirm={(targetPath) => {
+            handleMove(modal.node!.path, targetPath)
+            setModal({ type: null })
+          }}
+          itemName={modal.node.name}
+          currentPath={modal.node.path}
         />
       )}
     </>

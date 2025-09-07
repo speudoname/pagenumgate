@@ -112,20 +112,18 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
   }
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* Minimal Header - just collapse button */}
-      <div className="flex justify-end p-2 border-b">
-        <button
-          onClick={onToggleCollapse}
-          className="text-gray-500 hover:text-gray-700"
-          title="Collapse AI Assistant"
-        >
-          ▶
-        </button>
-      </div>
+    <div className="h-full flex flex-col bg-white relative">
+      {/* Collapse button */}
+      <button
+        onClick={onToggleCollapse}
+        className="absolute top-2 left-2 z-10 text-gray-500 hover:text-gray-700"
+        title="Collapse AI Assistant"
+      >
+        ▶
+      </button>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pt-8">
         {messages.length === 0 && (
           <div className="text-center text-gray-500 mt-8">
             <div className="text-4xl mb-2">🤖</div>
@@ -173,10 +171,10 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t p-3">
-        {/* Minimal working context indicator */}
-        <div className="text-xs text-gray-500 mb-1 px-1">
+      {/* Input area with Neo-brutalism styling */}
+      <div className="border-t-2 border-black p-3 bg-white">
+        {/* Context indicator - simplified */}
+        <div className="text-xs mb-2 text-gray-600">
           {selectedFile 
             ? selectedFile.type === 'file' 
               ? `📄 ${selectedFile.name}`
@@ -184,22 +182,28 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
             : '📁 /'}
         </div>
         
-        <div className="flex gap-2">
-          <input
-            type="text"
+        <div className="flex gap-2 items-end">
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder="Ask me to create or edit HTML files..."
-            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                sendMessage()
+              }
+            }}
+            placeholder="Ask me to create or edit..."
+            rows={2}
+            className="flex-1 px-3 py-2 border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] focus:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] focus:translate-x-[2px] focus:translate-y-[2px] transition-all duration-100 focus:outline-none resize-none min-h-[60px] max-h-[120px]"
+            style={{ overflowY: 'auto' }}
             disabled={loading}
           />
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-10 h-10 bg-black text-white border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 flex items-center justify-center"
           >
-            Send
+            <span className="text-lg">➤</span>
           </button>
         </div>
       </div>

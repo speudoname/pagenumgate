@@ -5,22 +5,7 @@ import FileBrowser, { FileBrowserRef } from '@/components/FileBrowser'
 import FileEditor from '@/components/FileEditor'
 import SimpleAIChat from '@/components/SimpleAIChat'
 import { getApiUrl } from '@/lib/utils/api'
-
-interface UserInfo {
-  tenant_id: string
-  user_id: string
-  email: string
-  role: string
-}
-
-interface FileNode {
-  name: string
-  type: 'file' | 'folder'
-  path: string
-  url?: string
-  isPublished?: boolean
-  publicUrl?: string
-}
+import { UserInfo, FileNode } from '@/lib/types'
 
 export default function PageBuilderDashboard() {
   const [user, setUser] = useState<UserInfo | null>(null)

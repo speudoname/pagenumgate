@@ -2,15 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getApiUrl } from '@/lib/utils/api'
-
-interface FileNode {
-  name: string
-  type: 'file' | 'folder'
-  path: string
-  url?: string
-  isPublished?: boolean
-  publicUrl?: string
-}
+import { FileNode } from '@/lib/types'
 
 interface FileEditorProps {
   file: FileNode | null

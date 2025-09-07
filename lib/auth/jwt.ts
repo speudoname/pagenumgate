@@ -35,14 +35,3 @@ export async function setTokenCookie(token: string) {
     path: '/'
   })
 }
-
-export async function getTokenFromCookie(): Promise<string | null> {
-  const cookieStore = await cookies()
-  const token = cookieStore.get('pb-auth-token')
-  return token?.value || null
-}
-
-export async function clearTokenCookie() {
-  const cookieStore = await cookies()
-  cookieStore.delete('pb-auth-token')
-}

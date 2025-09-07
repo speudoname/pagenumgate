@@ -2,25 +2,15 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { getApiUrl } from '@/lib/utils/api'
+import { FileNode, Message } from '@/lib/types'
 
 interface SimpleAIChatProps {
   currentFolder: string
-  selectedFile?: {
-    name: string
-    type: 'file' | 'folder'
-    path: string
-  } | null
+  selectedFile?: FileNode | null
   onClose: () => void
   onFilesChanged: () => void
   isCollapsed?: boolean
   onToggleCollapse?: () => void
-}
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  tools?: any[]
 }
 
 export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onFilesChanged, isCollapsed = false, onToggleCollapse }: SimpleAIChatProps) {
@@ -28,11 +18,6 @@ export default function SimpleAIChat({ currentFolder, selectedFile, onClose, onF
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return

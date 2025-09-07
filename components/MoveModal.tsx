@@ -2,13 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { getApiUrl } from '@/lib/utils/api'
-
-interface FileNode {
-  name: string
-  type: 'file' | 'folder'
-  path: string
-  children?: FileNode[]
-}
+import { FileNode } from '@/lib/types'
 
 interface MoveModalProps {
   isOpen: boolean

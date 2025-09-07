@@ -5,16 +5,7 @@ import { getApiUrl } from '@/lib/utils/api'
 import FileContextMenu from './FileContextMenu'
 import FileModal from './FileModal'
 import MoveModal from './MoveModal'
-
-interface FileNode {
-  name: string
-  type: 'file' | 'folder'
-  path: string
-  url?: string
-  size?: number
-  uploadedAt?: string
-  children?: FileNode[]
-}
+import { FileNode } from '@/lib/types'
 
 interface FileBrowserProps {
   onFileSelect: (file: FileNode) => void

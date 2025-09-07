@@ -1,4 +1,5 @@
 import { kv } from '@vercel/kv'
+import { getRedisClient } from './redis-client'
 
 export interface ChatMessage {
   id: string
@@ -175,6 +176,7 @@ export class InMemoryChatStorage {
 }
 
 // Export the appropriate storage based on environment
-export const Storage = process.env.KV_REST_API_URL 
+// Check for REDIS_URL first (from Vercel KV), then fall back to KV_REST_API_URL
+export const Storage = (process.env.REDIS_URL || process.env.KV_REST_API_URL)
   ? ChatStorage 
   : InMemoryChatStorage

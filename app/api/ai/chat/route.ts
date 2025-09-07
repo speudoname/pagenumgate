@@ -9,6 +9,8 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
 
+export const maxDuration = 60 // 60 second timeout for Vercel
+
 export async function POST(request: NextRequest) {
   try {
     const { message, currentFolder, selectedFile, sessionId, conversationHistory } = await request.json()

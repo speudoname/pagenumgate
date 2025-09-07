@@ -422,13 +422,16 @@ Add your notes about this folder here...
     }
     
     try {
+      // Extract the name from the source path for logging
+      const itemName = sourcePath.split('/').pop() || sourcePath
+      
       const response = await fetch(getApiUrl('/api/files/move'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sourcePath,
-          targetFolder,  // Send targetFolder as expected by API
-          isFolder      // Include isFolder parameter
+          targetFolder,
+          isFolder
         })
       })
       
@@ -438,22 +441,23 @@ Add your notes about this folder here...
         
         // Update selected file if it was moved
         if (selectedFile?.path === sourcePath) {
+          // The API returns newPath which is the new location
           onFileSelect({
             ...selectedFile,
-            path: data.newPath || targetPath
+            path: data.newPath
           })
         }
         
         // Show success feedback
-        console.log(`Successfully moved "${fileName}" to "${targetFolder}"`) 
+        const destination = targetFolder === '/' ? 'root' : targetFolder
+        console.log(`Successfully moved "${itemName}" to "${destination}"`) 
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(errorData.error || 'Failed to move file')
       }
     } catch (error) {
       console.error('Failed to move:', error)
-      // Show error feedback - you could replace this with a toast notification
-      alert(`Failed to move file: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(`Failed to move: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -487,7 +491,7 @@ Add your notes about this folder here...
       return
     }
     
-    handleMove(draggedItem.path, targetPath)
+    handleMove(draggedItem.path, targetPath, draggedItem.type === 'folder')
     setDraggedItem(null)
   }
 
@@ -820,7 +824,7 @@ Add your notes about this folder here...
           isOpen={true}
           onClose={() => setModal({ type: null })}
           onConfirm={(targetPath) => {
-            handleMove(modal.node!.path, targetPath)
+            handleMove(modal.node!.path, targetPath, modal.node!.type === 'folder')
             setModal({ type: null })
           }}
           itemName={modal.node.name}

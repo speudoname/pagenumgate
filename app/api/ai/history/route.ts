@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Storage } from '@/lib/kv/chat-storage'
-import { cookies } from 'next/headers'
-import { jwtVerify } from 'jose'
+import { auth } from '@clerk/nextjs/server'
 
 // GET /api/ai/history - Get chat history for a page
 export async function GET(request: NextRequest) {
@@ -13,19 +12,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Page ID required' }, { status: 400 })
     }
     
-    // Get tenant ID
-    const cookieStore = await cookies()
-    const token = cookieStore.get('jwt-token')
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6'
+    // Check authentication and get tenant ID
+    const { userId, orgId } = await auth()
     
-    if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
-        const verified = await jwtVerify(token.value, secret)
-        const payload = verified.payload as any
-        tenantId = payload.app_metadata?.tenant_id || payload.sub
-      } catch {}
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    const tenantId = orgId || userId
     
     const messages = await Storage.getMessages(tenantId, pageId)
     const operations = await Storage.getOperations(tenantId, pageId)
@@ -51,19 +45,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
     
-    // Get tenant ID
-    const cookieStore = await cookies()
-    const token = cookieStore.get('jwt-token')
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6'
+    // Check authentication and get tenant ID
+    const { userId, orgId } = await auth()
     
-    if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
-        const verified = await jwtVerify(token.value, secret)
-        const payload = verified.payload as any
-        tenantId = payload.app_metadata?.tenant_id || payload.sub
-      } catch {}
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    const tenantId = orgId || userId
     
     await Storage.addMessage(tenantId, pageId, {
       ...message,
@@ -88,19 +77,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Page ID required' }, { status: 400 })
     }
     
-    // Get tenant ID
-    const cookieStore = await cookies()
-    const token = cookieStore.get('jwt-token')
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6'
+    // Check authentication and get tenant ID
+    const { userId, orgId } = await auth()
     
-    if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
-        const verified = await jwtVerify(token.value, secret)
-        const payload = verified.payload as any
-        tenantId = payload.app_metadata?.tenant_id || payload.sub
-      } catch {}
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    const tenantId = orgId || userId
     
     await Storage.clearChat(tenantId, pageId)
     await Storage.clearOperations(tenantId, pageId)

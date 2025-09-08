@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { list } from '@vercel/blob'
-import { verifyToken } from '@/lib/auth/jwt'
+import { auth } from '@clerk/nextjs/server'
 import { logger } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get tenant ID from headers (set by middleware)
-    const tenantId = request.headers.get('x-tenant-id')
+    // Check authentication
+    const { userId, orgId } = await auth()
     
-    if (!tenantId) {
+    if (!userId) {
       return NextResponse.json(
-        { error: 'No tenant context found' },
+        { error: 'Unauthorized' },
         { status: 401 }
       )
     }
+    
+    // Use orgId as tenant ID, or user ID for personal workspace
+    const tenantId = orgId || userId
 
     // List all blobs for this tenant
     const { blobs } = await list({
@@ -49,13 +52,15 @@ export async function GET(request: NextRequest) {
         
         if (index === parts.length - 1) {
           // It's a file
+          const extension = part.split('.').pop()?.toLowerCase() || ''
           currentLevel.push({
             name: part,
             type: 'file',
-            path: relativePath,  // Use relative path without tenant ID
+            path: relativePath,
             url: blob.url,
             size: blob.size,
-            uploadedAt: blob.uploadedAt
+            uploadedAt: blob.uploadedAt,
+            extension
           })
         } else {
           // It's a folder
@@ -78,13 +83,9 @@ export async function GET(request: NextRequest) {
       })
     })
 
-    return NextResponse.json({
-      tenantId,
-      files: fileTree,
-      totalFiles: blobs.length
-    })
+    return NextResponse.json({ files: fileTree })
   } catch (error) {
-    logger.error('List files error:', error)
+    logger.error('Error listing files:', error)
     return NextResponse.json(
       { error: 'Failed to list files' },
       { status: 500 }

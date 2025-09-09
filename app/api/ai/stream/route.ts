@@ -3,8 +3,6 @@ import Anthropic from '@anthropic-ai/sdk'
 import { Storage } from '@/lib/kv/chat-storage'
 import { simpleTools, executeSimpleTool } from '@/lib/ai/simple-tools'
 import { buildContextualPrompt } from '@/lib/ai/system-prompt'
-import { cookies } from 'next/headers'
-import { jwtVerify } from 'jose'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -27,21 +25,13 @@ export async function POST(request: NextRequest) {
       conversationHistory = []
     } = await request.json()
 
-    // Get tenant ID from JWT or use dev default
-    const cookieStore = await cookies()
-    const token = cookieStore.get('jwt-token')
-    
+    // Get tenant ID from proxy headers or use dev default
+    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
     let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
     
-    if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
-        const verified = await jwtVerify(token.value, secret)
-        const payload = verified.payload as any
-        tenantId = payload.app_metadata?.tenant_id || payload.sub
-      } catch (error) {
-        console.log('Using default tenant for development')
-      }
+    if (isProxied) {
+      // Trust NUMgate's authentication
+      tenantId = request.headers.get('x-tenant-id') || tenantId
     }
 
     if (!message || !pageContext) {

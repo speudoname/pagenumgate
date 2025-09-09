@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { list } from '@vercel/blob'
-import { verifyToken } from '@/lib/auth/jwt'
 import { logger } from '@/lib/utils/logger'
 
 export async function GET(request: NextRequest) {

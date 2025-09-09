@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Storage } from '@/lib/kv/chat-storage'
-import { cookies } from 'next/headers'
-import { jwtVerify } from 'jose'
 
 // GET /api/ai/history - Get chat history for a page
 export async function GET(request: NextRequest) {
@@ -13,18 +11,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Page ID required' }, { status: 400 })
     }
     
-    // Get tenant ID
-    const cookieStore = await cookies()
-    const token = cookieStore.get('jwt-token')
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6'
+    // Get tenant ID from proxy headers or use dev default
+    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
+    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
     
-    if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
-        const verified = await jwtVerify(token.value, secret)
-        const payload = verified.payload as any
-        tenantId = payload.app_metadata?.tenant_id || payload.sub
-      } catch {}
+    if (isProxied) {
+      // Trust NUMgate's authentication
+      tenantId = request.headers.get('x-tenant-id') || tenantId
     }
     
     const messages = await Storage.getMessages(tenantId, pageId)
@@ -51,18 +44,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
     
-    // Get tenant ID
-    const cookieStore = await cookies()
-    const token = cookieStore.get('jwt-token')
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6'
+    // Get tenant ID from proxy headers or use dev default
+    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
+    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
     
-    if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
-        const verified = await jwtVerify(token.value, secret)
-        const payload = verified.payload as any
-        tenantId = payload.app_metadata?.tenant_id || payload.sub
-      } catch {}
+    if (isProxied) {
+      // Trust NUMgate's authentication
+      tenantId = request.headers.get('x-tenant-id') || tenantId
     }
     
     await Storage.addMessage(tenantId, pageId, {
@@ -88,18 +76,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Page ID required' }, { status: 400 })
     }
     
-    // Get tenant ID
-    const cookieStore = await cookies()
-    const token = cookieStore.get('jwt-token')
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6'
+    // Get tenant ID from proxy headers or use dev default
+    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
+    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
     
-    if (token) {
-      try {
-        const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
-        const verified = await jwtVerify(token.value, secret)
-        const payload = verified.payload as any
-        tenantId = payload.app_metadata?.tenant_id || payload.sub
-      } catch {}
+    if (isProxied) {
+      // Trust NUMgate's authentication
+      tenantId = request.headers.get('x-tenant-id') || tenantId
     }
     
     await Storage.clearChat(tenantId, pageId)

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Authentication context for proxied requests from NUMgate
+ * @since 2025-01-09 - Clean auth architecture implementation
+ */
 export interface AuthContext {
   tenantId: string
   userId: string

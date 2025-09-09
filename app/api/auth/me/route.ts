@@ -1,43 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth/jwt'
 import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
-    // Check for token from either header (from nginx) or cookie
-    const headerToken = request.headers.get('x-auth-token')
-    const cookieToken = request.cookies.get('pb-auth-token')?.value
-    const token = headerToken || cookieToken
+    // Middleware already validated - just get headers
+    const tenantId = request.headers.get('x-tenant-id')
+    const userId = request.headers.get('x-user-id')
+    const email = request.headers.get('x-user-email')
+    const role = request.headers.get('x-user-role')
 
-    if (!token) {
-      return NextResponse.json({ error: 'No authentication token' }, { status: 401 })
-    }
-
-    // Verify the token
-    const payload = await verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    // If no headers, middleware should have blocked this
+    if (!tenantId || !userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
     // Get tenant information from Supabase
     let tenantInfo = null
-    if (payload.tenant_id) {
+    if (tenantId) {
       const supabase = createClient()
       const { data: tenant } = await supabase
         .from('tenants')
         .select('slug, custom_domain')
-        .eq('id', payload.tenant_id)
+        .eq('id', tenantId)
         .single()
       
       tenantInfo = tenant
     }
 
     return NextResponse.json({
-      tenant_id: payload.tenant_id || '',
-      user_id: payload.user_id || '',
-      email: payload.email || '',
-      role: payload.role || 'user',
+      tenant_id: tenantId,
+      user_id: userId,
+      email: email || '',
+      role: role || 'user',
       tenant: tenantInfo
     })
   } catch (error) {

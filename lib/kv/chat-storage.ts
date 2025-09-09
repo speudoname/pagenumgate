@@ -177,6 +177,66 @@ export class InMemoryChatStorage {
 
 // Export the appropriate storage based on environment
 // Check for REDIS_URL first (from Vercel KV), then fall back to KV_REST_API_URL
+// If neither is available, use in-memory storage
 export const Storage = (process.env.REDIS_URL || process.env.KV_REST_API_URL)
   ? ChatStorage 
   : InMemoryChatStorage
+
+// Add error handling wrapper for production safety
+export class SafeStorage {
+  static async getMessages(tenantId: string, pageId: string): Promise<ChatMessage[]> {
+    try {
+      return await Storage.getMessages(tenantId, pageId)
+    } catch (error) {
+      console.error('Storage.getMessages error:', error)
+      // Fallback to empty array if storage fails
+      return []
+    }
+  }
+
+  static async getOperations(tenantId: string, pageId: string): Promise<PageOperation[]> {
+    try {
+      return await Storage.getOperations(tenantId, pageId)
+    } catch (error) {
+      console.error('Storage.getOperations error:', error)
+      // Fallback to empty array if storage fails
+      return []
+    }
+  }
+
+  static async addMessage(tenantId: string, pageId: string, message: ChatMessage): Promise<void> {
+    try {
+      await Storage.addMessage(tenantId, pageId, message)
+    } catch (error) {
+      console.error('Storage.addMessage error:', error)
+      // Silently fail - don't break the user experience
+    }
+  }
+
+  static async addOperation(tenantId: string, pageId: string, operation: PageOperation): Promise<void> {
+    try {
+      await Storage.addOperation(tenantId, pageId, operation)
+    } catch (error) {
+      console.error('Storage.addOperation error:', error)
+      // Silently fail - don't break the user experience
+    }
+  }
+
+  static async clearChat(tenantId: string, pageId: string): Promise<void> {
+    try {
+      await Storage.clearChat(tenantId, pageId)
+    } catch (error) {
+      console.error('Storage.clearChat error:', error)
+      // Silently fail - don't break the user experience
+    }
+  }
+
+  static async clearOperations(tenantId: string, pageId: string): Promise<void> {
+    try {
+      await Storage.clearOperations(tenantId, pageId)
+    } catch (error) {
+      console.error('Storage.clearOperations error:', error)
+      // Silently fail - don't break the user experience
+    }
+  }
+}

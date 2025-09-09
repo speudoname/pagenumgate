@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { Storage } from '@/lib/kv/chat-storage'
+import { SafeStorage } from '@/lib/kv/chat-storage'
 import { simpleTools, executeSimpleTool } from '@/lib/ai/simple-tools'
 import { buildContextualPrompt } from '@/lib/ai/system-prompt'
 import { requireProxyAuth } from '@/lib/auth/proxy-auth'
@@ -117,7 +117,7 @@ IMPORTANT INSTRUCTIONS:
       tools: toolResults
     }
     
-    await Storage.addMessage(tenantId, pageContext.pageId, chatMessage)
+    await SafeStorage.addMessage(tenantId, pageContext.pageId, chatMessage)
     
     // Track operations if any tools were used
     if (toolResults.length > 0) {
@@ -132,7 +132,7 @@ IMPORTANT INSTRUCTIONS:
             timestamp: new Date(),
             revertible: true
           }
-          await Storage.addOperation(tenantId, pageContext.pageId, operation)
+          await SafeStorage.addOperation(tenantId, pageContext.pageId, operation)
         }
       }
     }

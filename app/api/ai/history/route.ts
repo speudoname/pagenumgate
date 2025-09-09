@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Storage } from '@/lib/kv/chat-storage'
+import { SafeStorage } from '@/lib/kv/chat-storage'
 import { requireProxyAuth } from '@/lib/auth/proxy-auth'
 
 // GET /api/ai/history - Get chat history for a page
@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Page ID required' }, { status: 400 })
     }
     
-    const messages = await Storage.getMessages(tenantId, pageId)
-    const operations = await Storage.getOperations(tenantId, pageId)
+    const messages = await SafeStorage.getMessages(tenantId, pageId)
+    const operations = await SafeStorage.getOperations(tenantId, pageId)
     
     return NextResponse.json({ 
       messages,
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
     
-    await Storage.addMessage(tenantId, pageId, {
+    await SafeStorage.addMessage(tenantId, pageId, {
       ...message,
       id: message.id || `msg-${Date.now()}`,
       timestamp: new Date()
@@ -71,8 +71,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Page ID required' }, { status: 400 })
     }
     
-    await Storage.clearChat(tenantId, pageId)
-    await Storage.clearOperations(tenantId, pageId)
+    await SafeStorage.clearChat(tenantId, pageId)
+    await SafeStorage.clearOperations(tenantId, pageId)
     
     return NextResponse.json({ success: true })
   } catch (error) {

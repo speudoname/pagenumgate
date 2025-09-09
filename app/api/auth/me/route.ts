@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       tenantInfo = tenant
     }
 
-    return SharedApiResponse.success({
+    return NextResponse.json({
       tenant_id: tenantId,
       user_id: userId,
       email: email || '',

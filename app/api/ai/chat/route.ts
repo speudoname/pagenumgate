@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { simpleTools, executeSimpleTool } from '@/lib/ai/simple-tools'
 import { buildContextualPrompt } from '@/lib/ai/system-prompt'
+import { requireProxyAuth } from '@/lib/auth/proxy-auth'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -11,16 +12,11 @@ export const maxDuration = 60 // 60 second timeout for Vercel
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate proxy authentication
+    const auth = requireProxyAuth(request)
+    const { tenantId } = auth
+    
     const { message, currentFolder, selectedFile, sessionId, conversationHistory } = await request.json()
-    
-    // Get tenant ID from proxy headers or use dev default
-    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
-    
-    if (isProxied) {
-      // Trust NUMgate's authentication
-      tenantId = request.headers.get('x-tenant-id') || tenantId
-    }
     
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })

@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { Storage } from '@/lib/kv/chat-storage'
 import { simpleTools, executeSimpleTool } from '@/lib/ai/simple-tools'
 import { buildContextualPrompt } from '@/lib/ai/system-prompt'
+import { requireProxyAuth } from '@/lib/auth/proxy-auth'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -19,20 +20,15 @@ interface PageContext {
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate proxy authentication
+    const auth = requireProxyAuth(request)
+    const { tenantId } = auth
+    
     const { 
       message, 
       pageContext,
       conversationHistory = []
     } = await request.json()
-
-    // Get tenant ID from proxy headers or use dev default
-    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
-    
-    if (isProxied) {
-      // Trust NUMgate's authentication
-      tenantId = request.headers.get('x-tenant-id') || tenantId
-    }
 
     if (!message || !pageContext) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })

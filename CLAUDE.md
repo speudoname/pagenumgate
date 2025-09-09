@@ -1,4 +1,20 @@
-# PageNumGate - Part of NUM Gate Platform
+# PageNumGate - Static HTML Page Builder CLAUDE.md
+
+## 🎯 PROJECT CONTEXT
+**PageNumGate is a PROXIED APPLICATION within the NumGate multi-tenant SaaS platform.** It provides static HTML page building functionality and is accessed ONLY through the NumGate gateway.
+
+### Architecture Overview
+- **Proxy Access Only**: Accessed via NumGate at `/page-builder` route
+- **Gateway Dependency**: NumGate handles authentication and tenant management
+- **JWT Authentication**: Uses NumGate's JWT tokens (shared secret)
+- **Tenant Isolation**: Strict tenant-based data separation
+- **Shared Infrastructure**: Same Supabase instance as NumGate
+
+### Integration with NumGate
+- **Authentication**: Receives JWT tokens from NumGate gateway
+- **Tenant Context**: Gets tenant_id from JWT headers
+- **Data Isolation**: All queries filtered by tenant_id
+- **Proxy Routing**: Never accessed directly, always through gateway
 
 ## 🎯 FUNDAMENTAL PURPOSE: STATIC HTML PAGE BUILDER
 **THIS IS A STATIC HTML PAGE BUILDER, NOT A REACT APP!**
@@ -19,12 +35,6 @@ User creates HTML → Store in Blob → Serve as static file
 2. **Simple file operations** (create, edit, delete HTML files)
 3. **Basic folder structure** for organization
 4. **NO complex state**, NO React components in output
-
-### Remember:
-- We're building **websites**, not web apps
-- Think **Squarespace/Wix**, not Next.js
-- Output is **static HTML** that works anywhere
-- Keep it SIMPLE - it's just HTML files!
 
 ## 🚨🚨🚨 CRITICAL: CLAUDE 4 AND OPUS 4.1 ONLY - NEVER CHANGE THIS! 🚨🚨🚨
 
@@ -66,81 +76,28 @@ const CORRECT_MODELS = {
 
 **THE USER HAS BEEN EXTREMELY CLEAR: USE CLAUDE 4 AND OPUS 4.1 ONLY!**
 
-## 🚨 AI ASSISTANT IMPLEMENTATION INSTRUCTIONS 🚨
+## 🔒 CRITICAL SECURITY RULES
 
-### CURRENT AI IMPLEMENTATION STATUS
-The AI assistant uses 5 simple tools for static HTML page building:
-1. **create_file** - Creates new HTML/CSS/JS files
-2. **edit_file** - Modifies existing files  
-3. **read_file** - Reads file contents
-4. **delete_file** - Deletes files or folders
-5. **list_files** - Lists folder contents
+### Authentication Pattern (MUST MATCH NUMGATE)
+- **Custom JWT Authentication** (not Supabase Auth)
+- **Service Key Pattern**: Use `supabaseAdmin` with STRICT tenant filtering
+- **Security Rule**: EVERY query MUST include `.eq('tenant_id', tenantId)`
 
-### CRITICAL: ALWAYS USE CLAUDE OPUS 4.1
-- Model ID: `claude-opus-4-1-20250805`
-- This is the ONLY model that should be used in `/app/api/ai/chat/route.ts`
-- The AI knows it's building static HTML pages, NOT React components
+### Service Key Usage
+```typescript
+// ✅ CORRECT - Always filter by tenant
+const { data } = await supabaseAdmin
+  .from('table_name')
+  .select('*')
+  .eq('tenant_id', tenantId) // MANDATORY
+```
 
-## 🚨 CRITICAL: SMART TOOL PARAMETER EXTRACTION - NEVER FORGET THIS! 🚨
-
-### AI MUST BE SMART ABOUT TOOL USAGE
-Every tool requires specific parameters. The AI MUST:
-
-1. **EXTRACT PARAMETERS FROM CONVERSATION**
-   - User says "create a page for Levan" → Extract: filename="levan.html", generate complete HTML
-   - User says "brutal design" → Apply brutalist styling with bold colors, harsh borders
-   - User says "add payment form" → Look up products, extract product ID, determine price
-   - NEVER call a tool with empty parameters `{}`
-
-2. **SMART DEFAULTS FOR EVERY TOOL**
-   - No filename given? Generate logical one (e.g., "new-page.html", "untitled.html")
-   - No path given? Use current context path
-   - No content specified? Generate appropriate placeholder content
-   - Creating a "page"? Always use .html extension
-
-3. **CONTENT GENERATION RULES**
-   - HTML files: Always include complete valid structure with DOCTYPE
-   - Apply requested styles immediately (brutal, modern, minimal)
-   - Include requested messages/text prominently
-   - Make content professional and complete, not just placeholders
-
-4. **PARAMETER INFERENCE EXAMPLES**
-   ```
-   User: "Create a nice brutal design page with hello levan message"
-   AI extracts:
-   - path: "levan.html" (from name mentioned)
-   - content: Complete HTML with brutal design and "Hello Levan" message
-   
-   User: "Add a webinar registration"
-   AI extracts:
-   - Must find webinar_id from context or ask
-   - Determine fields needed
-   - Place in logical location
-   ```
-
-5. **FUTURE TOOL DEVELOPMENT RULE**
-   **EVERY NEW TOOL MUST FOLLOW THIS PATTERN:**
-   - Clear parameter descriptions that guide extraction
-   - Smart defaults for missing parameters
-   - Context awareness (current folder, tenant, etc.)
-   - Business data integration where relevant
-   
-   When adding new tools, ALWAYS ensure:
-   - Tool description explains WHEN to use it
-   - Parameter descriptions explain HOW to extract from conversation
-   - Required parameters have fallback generation logic
-   - Optional parameters have sensible defaults
-
-**REMEMBER: The AI is a smart translator from human conversation to precise tool calls!**
-
-## CRITICAL: Project Context
-**This is NOT a standalone project.** PageNumGate is an integral part of the NUM Gate multi-tenant SaaS platform located at `/Users/apple/numgate`.
-
-### Architecture Rules
-- **Always maintain compatibility** with the main NUM Gate gateway
-- **Never modify** JWT authentication flow - it must match the gateway
-- **Tenant isolation is mandatory** - each tenant only sees their own data
-- **Use shared Supabase instance** - same database as NUM Gate
+### Security Checklist
+1. ✅ Use service key with MANDATORY tenant filtering
+2. ✅ Validate JWT token from NumGate gateway
+3. ✅ Check user belongs to tenant
+4. ✅ NEVER trust client-provided tenant_id
+5. ✅ Validate ALL inputs with zod schemas
 
 ## 🚨 CRITICAL: Multi-Tenant Architecture - NEVER FORGET THIS!
 
@@ -207,60 +164,6 @@ blob-storage/
 │   ├── index.html
 │   └── about.html
 ```
-- **Proxy routing** - Served at `/page-builder` path via nginx/Vercel
-
-### Shared Resources
-- **Supabase**: Same instance as NUM Gate (hbopxprpgvrkucztsvnq)
-- **JWT Secret**: Must match NUM Gate for cross-app auth
-- **User Sessions**: Passed from NUM Gate via JWT tokens
-
-### Blob Storage Architecture (Two Separate Stores)
-
-#### 1. Tenant-Specific Blob (`BLOB_READ_WRITE_TOKEN`)
-- **Purpose**: Stores individual tenant pages and files
-- **Structure**: `{tenant-id}/pages/`, `{tenant-id}/media/`, `{tenant-id}/unpublished/`
-- **Content**: User-created pages, uploaded media, tenant-specific configs
-- **Access**: Isolated per tenant - each tenant only accesses their folder
-
-#### 2. Shared Global Blob (`sharedblob_READ_WRITE_TOKEN`)
-- **Purpose**: Global assets accessible by all tenants
-- **Structure**: 
-  ```
-  _global/
-    ├── components/     # Shadcn-based component library (JS/CSS)
-    ├── themes/        # Theme presets (Neo-brutalism, Neomorphic, etc.)
-    ├── stock-images/  # Stock photos and illustrations
-    └── libraries/     # Shared utilities and scripts
-  ```
-- **Content**: Components, theme configs, stock media, shared libraries
-- **Access**: Read-only for all tenants, managed centrally
-- **Usage**: Referenced in tenant pages via CDN URLs
-
-### Deployment Strategy
-- **NEVER deploy directly to Vercel** - Always push to GitHub
-- GitHub is connected to Vercel for automatic deployments
-- Workflow: Make changes → Commit → Push to GitHub → Vercel auto-deploys
-- This ensures version control and consistent deployment pipeline
-
-### Development Guidelines
-1. **Check NUM Gate first** before changing shared configs
-2. **Test with gateway** after major changes
-3. **Maintain consistent UI** with NUM Gate design system
-4. **Follow RLS policies** from main project
-5. **Test locally on http://localhost:3001** before pushing
-
-### File Structure in Blob
-```
-{tenant_id}/
-  ├── index.html           # Root pages - published and visible
-  ├── about.html          
-  ├── contact.html
-  ├── unpublished/        # Unpublished pages - not served by NumGate
-  │   ├── draft.html
-  │   └── work-in-progress.html
-  └── assets/
-      └── styles.css
-```
 
 ### Publishing Mechanism
 
@@ -273,8 +176,33 @@ blob-storage/
 
 **There are NO publish/unpublish toggles or database flags** - it's purely based on file location. NumGate automatically filters out any files in `unpublished/` folders when serving pages.
 
-### Key Dependencies
-- Next.js 15.5.2 (must stay aligned with NUM Gate)
-- Supabase client (shared configuration)
-- Vercel Blob (shared token)
-- JWT validation (shared secret)
+## 🎨 UI/UX STANDARDS
+- **USE NEOBRUTALISM.DEV EXCLUSIVELY**: All UI components from NeoBrutalism.dev
+- **NO CUSTOM COMPONENTS**: Never create custom UI elements
+- **STRICT ADHERENCE**: Copy exact code from neobrutalism.dev
+- **NO EXCEPTIONS**: No custom styling allowed
+
+## 🚀 DEPLOYMENT STRATEGY
+- **NEVER deploy directly to Vercel**
+- **ALWAYS push to GitHub first** → Auto-deployment
+- **Workflow**: Changes → Build locally → Commit → Push → Auto-deploy
+
+## 🛠️ DEVELOPMENT RULES
+- **NEVER ASSUME**: Always align with user before implementation
+- **ASK QUESTIONS**: When unclear, ask for clarification
+- **SLOW AND STEADY**: Build incrementally, verify each step
+- **CONFIRM APPROACH**: Explain approach and get approval
+
+## 🔧 AVAILABLE TOOLS & ACCESS
+- **Vercel CLI**: Full access to Vercel platform
+- **Supabase**: Complete access to database (hbopxprpgvrkucztsvnq)
+- **Postmark**: Full email system access and configuration
+- **Environment Variables**: All necessary keys and secrets available
+- **GitHub**: Full repository access for deployment
+
+## 📋 DEVELOPMENT WORKFLOW
+1. **Always test with NumGate** - Never access PageNumGate directly
+2. **Maintain JWT compatibility** - Must match NumGate gateway
+3. **Use service key** - With tenant filtering
+4. **Follow security patterns** - From NumGate gateway
+5. **Test locally on http://localhost:3002** before pushing

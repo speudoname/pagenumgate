@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Storage } from '@/lib/kv/chat-storage'
+import { requireProxyAuth } from '@/lib/auth/proxy-auth'
 
 // GET /api/ai/history - Get chat history for a page
 export async function GET(request: NextRequest) {
   try {
+    // Validate proxy authentication
+    const auth = requireProxyAuth(request)
+    const { tenantId } = auth
+    
     const { searchParams } = new URL(request.url)
     const pageId = searchParams.get('pageId')
     
     if (!pageId) {
       return NextResponse.json({ error: 'Page ID required' }, { status: 400 })
-    }
-    
-    // Get tenant ID from proxy headers or use dev default
-    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
-    
-    if (isProxied) {
-      // Trust NUMgate's authentication
-      tenantId = request.headers.get('x-tenant-id') || tenantId
     }
     
     const messages = await Storage.getMessages(tenantId, pageId)
@@ -38,19 +34,14 @@ export async function GET(request: NextRequest) {
 // POST /api/ai/history - Save a message
 export async function POST(request: NextRequest) {
   try {
+    // Validate proxy authentication
+    const auth = requireProxyAuth(request)
+    const { tenantId } = auth
+    
     const { pageId, message } = await request.json()
     
     if (!pageId || !message) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-    
-    // Get tenant ID from proxy headers or use dev default
-    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
-    
-    if (isProxied) {
-      // Trust NUMgate's authentication
-      tenantId = request.headers.get('x-tenant-id') || tenantId
     }
     
     await Storage.addMessage(tenantId, pageId, {
@@ -69,20 +60,15 @@ export async function POST(request: NextRequest) {
 // DELETE /api/ai/history - Clear history for a page
 export async function DELETE(request: NextRequest) {
   try {
+    // Validate proxy authentication
+    const auth = requireProxyAuth(request)
+    const { tenantId } = auth
+    
     const { searchParams } = new URL(request.url)
     const pageId = searchParams.get('pageId')
     
     if (!pageId) {
       return NextResponse.json({ error: 'Page ID required' }, { status: 400 })
-    }
-    
-    // Get tenant ID from proxy headers or use dev default
-    const isProxied = request.headers.get('x-proxied-from') === 'numgate'
-    let tenantId = '6da127c2-83b0-4fed-afb9-fe70d3602bb6' // Default for dev
-    
-    if (isProxied) {
-      // Trust NUMgate's authentication
-      tenantId = request.headers.get('x-tenant-id') || tenantId
     }
     
     await Storage.clearChat(tenantId, pageId)

@@ -1,8 +1,12 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { SupabaseClientFactory, initializeSupabase } from './shared-client-factory'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hbopxprpgvrkucztsvnq.supabase.co'
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+// Initialize the shared Supabase client factory
+initializeSupabase()
 
+// Export pre-configured client for backward compatibility
 export function createClient() {
-  return createSupabaseClient(supabaseUrl, supabaseKey)
+  return SupabaseClientFactory.createAdminClient()
 }
+
+// Export the factory for advanced use cases
+export { SupabaseClientFactory }

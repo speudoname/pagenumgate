@@ -1,6 +1,7 @@
-// Helper to get the correct API base path
+// Import the shared function
+import { getApiUrl as getApiUrlShared } from './shared-utils'
+
+// Helper to get the correct API base path for PageNumGate
 export function getApiUrl(path: string): string {
-  // In production, we're served from /page-builder subpath
-  const basePath = process.env.NODE_ENV === 'production' ? '/page-builder' : ''
-  return `${basePath}${path}`
+  return getApiUrlShared(path, 'page-builder')
 }

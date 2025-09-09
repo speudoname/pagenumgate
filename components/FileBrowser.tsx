@@ -5,10 +5,9 @@ import { getApiUrl } from '@/lib/utils/api'
 import FileContextMenu from './FileContextMenu'
 import FileModal from './FileModal'
 import MoveModal from './MoveModal'
+import FileBrowserToolbar from './FileBrowserToolbar'
+import FileTreeRenderer from './FileTreeRenderer'
 import { FileNode } from '@/lib/types'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { FileText } from 'lucide-react'
 
 interface FileBrowserProps {
   onFileSelect: (file: FileNode) => void
@@ -540,135 +539,20 @@ Add your notes about this folder here...
     return null
   }
 
-  const renderNode = (node: FileNode, level: number = 0, index: number = 0) => {
-    const isFolder = node.type === 'folder'
-    const isRoot = node.path === '/' || (node.path === '' && node.name === '/')
-    const isExpanded = isRoot || expandedFolders.has(node.path) // Root is always expanded
-    const isSelected = selectedFile?.path === node.path
-    const isUnpublishedFolder = isFolder && node.name === 'unpublished'
-    const isFolderNotes = !isFolder && node.name === '.folder-notes.md'
-    const canDrag = !isRoot && (!isFolder || node.name !== 'unpublished')
-
-    return (
-      <div key={`${level}-${index}-${node.type}-${node.path || node.name}`}>
-        <div
-          className={`
-            flex items-center gap-2 px-2 py-1.5 cursor-pointer
-            hover:bg-gray-100 transition-colors
-            ${isSelected ? 'bg-blue-50 border-l-2 border-blue-500' : ''}
-            ${dragOverFolder === node.path ? 'bg-green-100 border-l-2 border-green-500' : ''}
-          `}
-          style={{ paddingLeft: `${level * 20 + 8}px` }}
-          draggable={canDrag}
-          onDragStart={(e) => canDrag ? handleDragStart(e, node) : e.preventDefault()}
-          onDragOver={(e) => isFolder ? handleDragOver(e, node.path) : e.preventDefault()}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => isFolder ? handleDrop(e, node) : e.preventDefault()}
-          onClick={() => {
-            if (isFolder) {
-              if (!isRoot) {
-                toggleFolder(node.path)
-              }
-              // Also select the folder so chat context is set
-              onFileSelect(node)
-            } else {
-              onFileSelect(node)
-            }
-          }}
-          onContextMenu={(e) => {
-            e.stopPropagation() // Prevent event bubbling
-            handleContextMenu(e, node, isRoot)
-          }}
-        >
-          {/* Icon */}
-          <span className={`${isUnpublishedFolder ? 'text-orange-600' : isFolderNotes ? 'text-blue-600' : 'text-gray-600'}`}>
-            {isFolder ? (
-              isUnpublishedFolder ? '🔒' :
-              isExpanded ? '📂' : '📁'
-            ) : (
-              isFolderNotes ? <FileText className="w-4 h-4" /> :
-              node.name.endsWith('.html') ? '📄' :
-              node.name.endsWith('.css') ? '🎨' :
-              node.name.endsWith('.js') ? '⚡' :
-              node.name.endsWith('.md') ? '📋' : '📎'
-            )}
-          </span>
-          
-          {/* Name */}
-          <span className={`flex-1 text-sm ${isSelected ? 'font-semibold' : ''} ${isUnpublishedFolder ? 'text-orange-700 font-medium' : ''}`}>
-            {node.name}
-          </span>
-          
-          {/* File size */}
-          {!isFolder && node.size && (
-            <span className="text-xs text-gray-500">
-              {(node.size / 1024).toFixed(1)}KB
-            </span>
-          )}
-        </div>
-
-        {/* Render children if folder is expanded */}
-        {isFolder && isExpanded && node.children && (
-          <div>
-            {node.children.length === 0 && isRoot ? (
-              // Empty state for root folder
-              null // We handle this in the main render now
-            ) : (
-              sortNodes(node.children).map((child, childIndex) => {
-                const filtered = filterNodes(child)
-                return filtered ? renderNode(filtered, level + 1, childIndex) : null
-              })
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
 
   return (
     <>
       <div className="flex flex-col h-full">
         {/* Toolbar */}
-        <div className="border-b-2 border-black p-2 space-y-2">
-          {/* Search */}
-          <Input
-            type="text"
-            placeholder="Search files..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          
-          {/* Sort options */}
-          <div className="flex items-center gap-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="flex-1 px-2 py-1 text-xs border-2 border-black rounded-md shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] focus:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] focus:translate-x-[2px] focus:translate-y-[2px] transition-all duration-100 focus:outline-none"
-            >
-              <option value="name">Name</option>
-              <option value="size">Size</option>
-              <option value="date">Date</option>
-              <option value="type">Type</option>
-            </select>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            >
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadFiles}
-              title="Refresh"
-            >
-              🔄
-            </Button>
-          </div>
-        </div>
+        <FileBrowserToolbar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          onRefresh={loadFiles}
+        />
 
         {/* File tree */}
         <div 
@@ -689,8 +573,25 @@ Add your notes about this folder here...
           
           {!loading && !error && files && files.children && (
             <>
-              {/* Render root folder using the same renderNode system */}
-              {renderNode({ name: '/', type: 'folder', path: '/', children: files.children }, 0, 0)}
+              {/* Render root folder using FileTreeRenderer */}
+              <FileTreeRenderer
+                node={{ name: '/', type: 'folder', path: '/', children: files.children }}
+                level={0}
+                searchTerm={searchTerm}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                expandedFolders={expandedFolders}
+                selectedFile={selectedFile}
+                draggedItem={draggedItem}
+                dragOverFolder={dragOverFolder}
+                onFileSelect={onFileSelect}
+                onToggleFolder={toggleFolder}
+                onContextMenu={handleContextMenu}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              />
               
               {/* Show empty state if no files */}
               {files.children.length === 0 && (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
+import { SharedApiResponse } from '@/lib/utils/shared-error-handler'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     // If no headers, middleware should have blocked this
     if (!tenantId || !userId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+      return SharedApiResponse.unauthorized('Authentication required')
     }
 
     // Get tenant information from Supabase
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       tenantInfo = tenant
     }
 
-    return NextResponse.json({
+    return SharedApiResponse.success({
       tenant_id: tenantId,
       user_id: userId,
       email: email || '',
@@ -37,9 +38,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     logger.error('Get user error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return SharedApiResponse.internalError('Failed to get user information', error)
   }
 }
